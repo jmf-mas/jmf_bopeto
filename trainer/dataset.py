@@ -3,13 +3,13 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 class TabularDataset(Dataset):
-    def __init__(self, dataframe):
+    def __init__(self, data):
         """
         dataframe: A pandas DataFrame where the last column is the target.
         """
-        self.data = dataframe.iloc[:, :-1].to_numpy().astype(np.float32)  # Exclude the target column
-        self.targets = dataframe.iloc[:, -1].to_numpy().astype(np.float32)  # Targets
-        self.indices = np.arange(len(dataframe))
+        self.data = data[:, :-1].astype(np.float32)  # Exclude the target column
+        self.targets = data[:, -1].astype(np.float32)  # Targets
+        self.indices = np.arange(len(data))
 
     def __len__(self):
         return len(self.data)

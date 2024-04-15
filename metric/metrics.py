@@ -80,3 +80,11 @@ class Metrics:
         q1 = np.percentile(self.dynamics, 25, axis=1)
         q3 = np.percentile(self.dynamics, 75, axis=1)
         return q3 - q1
+
+
+def contamination(data):
+    in_dist = len(data[data[:, -1] == 0])
+    oo_dist = len(data[data[:, -1] == 1])
+    n = in_dist + oo_dist
+    return in_dist, oo_dist, oo_dist/n
+

@@ -1,10 +1,16 @@
 import argparse
 from params import Params
+from models.bopeto import BOPETO
 from utils import Utils
+from metric.metrics import contamination
+import numpy as np
+
+outputs = "outputs/"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bopeto",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("-t", "--is_bopeto", action="store_true", help="training mode", default=False)
     parser.add_argument('-r', '--contamination_rate', nargs='?', const=1, type=float, default=0.05)
     parser.add_argument('-b', '--batch_size', nargs='?', const=1, type=int, default=64)
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
@@ -15,11 +21,16 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--path', type=str, default='/data', help='path to data sets to use')
-    parser.add_argument('--metric', type=str, default='IQR', help='dynamics metrics')
-    parser.add_argument('--synthetic', type=str, default='ours', help='path to data sets to use')
+    parser.add_argument('--metric', type=str, default='rmac', help='dynamics metrics')
+    parser.add_argument('--synthetic', type=str, default='JMF', help='path to data sets to use')
+    parser.add_argument('-b1', '--beta', nargs='?', const=1, type=float, default=0.25)
+    parser.add_argument('-p0', '--phi_0', nargs='?', const=1, type=float, default=0.5)
+    parser.add_argument('-p1', '--phi_1', nargs='?', const=1, type=float, default=1.)
+    parser.add_argument('-p2', '--phi_2', nargs='?', const=1, type=float, default=2.)
 
     args = parser.parse_args()
     configs = vars(args)
+    is_bopeto = configs['is_bopeto']
     rate = configs['contamination_rate']
     batch_size = configs['batch_size']
     lr = configs['learning_rate']
@@ -32,10 +43,38 @@ if __name__ == "__main__":
     path = configs['path']
     metric = configs['metric']
     synthetic = configs['synthetic']
+    beta = configs['beta']
+    phi_0 = configs['phi_0']
+    phi_1 = configs['phi_1']
+    phi_2 = configs['phi_2']
 
-    params = Params(rate, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic)
-    params.set_model(load=False)
-    utils = Utils(params)
-    utils.train()
+    rates = np.random.uniform(0, 0.3, 10)
+    for rate in rates:
+        #training
+        params = Params(rate, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0, phi_1, phi_2)
+        params.set_model(load=False)
+        utils = Utils(params)
+        in_dist, oo_dist = utils.data_split()
+        params.rate = rate
+        params.data = utils.contaminate(in_dist, oo_dist)
+        print("before", contamination(params.data))
+        synthetic = utils.generate_synthetic_data()
+        params.update_data(synthetic)
+        if not is_bopeto:
+            y = params.data[:, -1]
+            dynamics = utils.get_reconstruction_errors()
+            params.dynamics = np.column_stack((dynamics, y))
+            np.savetxt(outputs+params.model.name+'.csv', params.dynamics, delimiter=',')
+
+        #filtering
+        dynamics = np.loadtxt(outputs+params.model.name+'.csv', delimiter=',')
+        params.dynamics = dynamics
+        bopeto = BOPETO(params)
+        indices = bopeto.refine()
+        refined_data = params.data[indices]
+        print("after", contamination(refined_data))
+
+
+
 
 

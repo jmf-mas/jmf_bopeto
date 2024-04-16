@@ -4,7 +4,7 @@ from models.ae import AE
 
 class Params:
 
-    def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0, phi_1, phi_2):
+    def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, momentum, epochs, path, metric, synthetic, beta):
 
         self.rate = rate
         self.id = None
@@ -25,9 +25,6 @@ class Params:
         key = list(raw.keys())[0]
         self.data = raw[key]
         self.beta = beta
-        self.phi_0 = phi_0
-        self.phi_1 = phi_1
-        self.phi_2 = phi_2
         self.dynamics = None
 
     def set_model(self, load=False):

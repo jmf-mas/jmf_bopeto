@@ -23,10 +23,6 @@ if __name__ == "__main__":
     parser.add_argument('--path', type=str, default='/data', help='path to data sets to use')
     parser.add_argument('--metric', type=str, default='rmac', help='dynamics metrics')
     parser.add_argument('--synthetic', type=str, default='JMF', help='path to data sets to use')
-    parser.add_argument('-b1', '--beta', nargs='?', const=1, type=float, default=0.25)
-    parser.add_argument('-p0', '--phi_0', nargs='?', const=1, type=float, default=0.5)
-    parser.add_argument('-p1', '--phi_1', nargs='?', const=1, type=float, default=1.)
-    parser.add_argument('-p2', '--phi_2', nargs='?', const=1, type=float, default=2.)
 
     args = parser.parse_args()
     configs = vars(args)
@@ -43,13 +39,8 @@ if __name__ == "__main__":
     path = configs['path']
     metric = configs['metric']
     synthetic = configs['synthetic']
-    beta = configs['beta']
-    phi_0 = configs['phi_0']
-    phi_1 = configs['phi_1']
-    phi_2 = configs['phi_2']
 
-    params = Params(0, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0,
-                    phi_1, phi_2)
+    params = Params(0, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic)
     utils = Utils(params)
     in_dist, oo_dist = utils.data_split()
     cleaning = []

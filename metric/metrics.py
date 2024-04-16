@@ -1,7 +1,4 @@
 import numpy as np
-from sklearn.cluster import KMeans
-from sklearn.mixture import GaussianMixture
-from sklearn.metrics import silhouette_score
 
 class Metrics:
 
@@ -41,7 +38,7 @@ class Metrics:
         """
         return np.std(np.diff(self.dynamics, axis=1), axis=1)
 
-    def pc(self):
+    def _pc(self):
         """
         Percentage Change (PC)
         Returns
@@ -50,7 +47,7 @@ class Metrics:
         """
         return np.std(np.diff(self.dynamics, axis=1) / self.dynamics[:, :-1] * 100, axis=1)
 
-    def rmac(self):
+    def _rmac(self):
         """
         Relative Mean Absolute Change (RMAC)
         Returns
@@ -72,7 +69,7 @@ class Metrics:
 
         return std_dev / mean_value
 
-    def iqr(self):
+    def _iqr(self):
         """
         Interquartile range (IQR).
 

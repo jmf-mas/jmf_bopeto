@@ -7,6 +7,7 @@ class Params:
     def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0, phi_1, phi_2):
 
         self.rate = rate
+        self.id = None
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
@@ -30,7 +31,8 @@ class Params:
         self.dynamics = None
 
     def set_model(self, load=False):
-        self.model = AE(self.data.shape[1]-1, self.metric+"_ae_rate_"+str(self.rate))
+        self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
+        self.model = AE(self.data.shape[1]-1, self.id)
         if load:
             self.model.load()
 
@@ -39,6 +41,9 @@ class Params:
         synthetic = np.column_stack((synthetic, y))
         self.data = np.vstack((self.data, synthetic))
         np.random.shuffle(self.data)
+
+    def update_rate(self, rate):
+        self.rate = rate
 
 
 

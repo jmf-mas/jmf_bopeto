@@ -1,5 +1,6 @@
 import numpy as np
-
+from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
 
 class Metrics:
 
@@ -86,5 +87,25 @@ def contamination(data):
     in_dist = len(data[data[:, -1] == 0])
     oo_dist = len(data[data[:, -1] == 1])
     n = in_dist + oo_dist
-    return in_dist, oo_dist, oo_dist/n
+    return n, oo_dist/n
+
+def elbow(values):
+    wcss = []
+    for k in range(1, 11):
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(values)
+        wcss.append(kmeans.inertia_)
+
+    differences = np.diff(wcss)
+    second_derivative = np.diff(differences)
+    elbow_index = np.where(second_derivative > 0)[0][0] + 1
+    optimal_num_clusters = elbow_index + 1
+    return optimal_num_clusters
+
+def gaussian(values):
+    gmm_one = GaussianMixture(n_components=1)
+    gmm_two = GaussianMixture(n_components=2)
+    gmm_one.fit(values)
+    gmm_two.fit(values)
+    return 2 -  int(gmm_one.score(values)< gmm_two.score(values))
 

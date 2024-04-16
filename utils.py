@@ -32,6 +32,9 @@ class Utils:
         data = np.vstack((in_dist, oo_dist[selected_indices]))
         return data
 
+    def update_params(self, params):
+        self.params = params
+
 
 
 

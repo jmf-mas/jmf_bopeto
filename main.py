@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bopeto",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-t", "--is_bopeto", action="store_true", help="training mode", default=False)
-    parser.add_argument('-r', '--contamination_rate', nargs='?', const=1, type=float, default=0.05)
+    parser.add_argument('-r', '--contamination_rate', metavar='N', type=float, nargs='+', help='list of contamination rates', default=[0.1])
     parser.add_argument('-b', '--batch_size', nargs='?', const=1, type=int, default=64)
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     configs = vars(args)
     is_bopeto = configs['is_bopeto']
-    rate = configs['contamination_rate']
+    rates = configs['contamination_rate']
     batch_size = configs['batch_size']
     lr = configs['learning_rate']
     wd = configs['weight_decay']
@@ -48,31 +48,36 @@ if __name__ == "__main__":
     phi_1 = configs['phi_1']
     phi_2 = configs['phi_2']
 
-    rates = np.random.uniform(0, 0.3, 10)
+    params = Params(0, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0,
+                    phi_1, phi_2)
+    utils = Utils(params)
+    in_dist, oo_dist = utils.data_split()
+    cleaning = {}
     for rate in rates:
-        #training
-        params = Params(rate, batch_size, lr, wd, nw, alpha, gamma, momentum, epochs, path, metric, synthetic, beta, phi_0, phi_1, phi_2)
+        params.update_rate(rate)
         params.set_model(load=False)
-        utils = Utils(params)
-        in_dist, oo_dist = utils.data_split()
-        params.rate = rate
-        params.data = utils.contaminate(in_dist, oo_dist)
-        print("before", contamination(params.data))
+        utils.update_params(params)
+        #training
+        utils.params.rate = rate
+        utils.params.data = utils.contaminate(in_dist, oo_dist)
+        before = contamination(params.data)
+        print("before", before)
         synthetic = utils.generate_synthetic_data()
-        params.update_data(synthetic)
+        utils.params.update_data(synthetic)
         if not is_bopeto:
-            y = params.data[:, -1]
+            y = utils.params.data[:, -1]
             dynamics = utils.get_reconstruction_errors()
-            params.dynamics = np.column_stack((dynamics, y))
-            np.savetxt(outputs+params.model.name+'.csv', params.dynamics, delimiter=',')
+            utils.params.dynamics = np.column_stack((dynamics, y))
+            np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
 
         #filtering
-        dynamics = np.loadtxt(outputs+params.model.name+'.csv', delimiter=',')
-        params.dynamics = dynamics
-        bopeto = BOPETO(params)
-        indices = bopeto.refine()
-        refined_data = params.data[indices]
-        print("after", contamination(refined_data))
+        dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
+        utils.params.dynamics = dynamics
+        b = BOPETO(utils.params)
+        indices = b.refine(True)
+        refined_data = utils.params.data[indices]
+        after = contamination(refined_data)
+        print("after", after)
 
 
 

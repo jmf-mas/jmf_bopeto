@@ -25,11 +25,8 @@ Replace `[ENV_NAME]` with the name of your environment.
 ## Usage
 From the root of the project.
 ```
-$ python -m src.main 
--m [model_name]
--d [/path/to/dataset/file.{npz,mat}]
---dataset [dataset_name]
---batch-size [batch_size]
+$ conda activate bopeto
+$ python main.py --path data/kdd.npz --synthetic JMF --metric rmac --contamination_rate 0 0.1 0.2 0.3
 ```
 
 Our model contains the following parameters:

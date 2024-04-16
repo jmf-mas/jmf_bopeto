@@ -9,8 +9,8 @@ from sklearn.decomposition import PCA
 
 class FGM:
     def __init__(self, X, gamma = 0.1):
-        X = torch.tensor(X, dtype=torch.float32)
-        y = np.array([0]*len(X))
+        X = torch.tensor(X[:, :-1], dtype=torch.float32)
+        y = X[:, -1]
         self.n = int(gamma * len(y))
         y = torch.tensor(y, dtype=torch.float32)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

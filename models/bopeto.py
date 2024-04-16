@@ -1,14 +1,12 @@
 from plot.filtering import plot_segmented_one_line, plot_segmented_two_lines, plot_segmented
 import pandas as pd
 from scipy.stats import variation as cv
-from metric.metrics import Metrics, elbow, gaussian
+from metric.metrics import Metrics
 from sklearn.cluster import KMeans
 import numpy as np
 
 
 class BOPETO:
-
-
     def __init__(self, params):
 
         self.params = params
@@ -23,21 +21,22 @@ class BOPETO:
         if plot:
             target = ["in" if self.params.dynamics[i, -1] == 0 else ("out" if self.params.dynamics[i, -1] == 1 else "synthetic") for i in range(n)]
             db = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": target})
-        cv1 = cv(dbframe[(dbframe["class"] == "synthetic")][self.params.metric].values)
-        cv2 = cv(dbframe[(dbframe["class"] != "synthetic")][self.params.metric].values)
         values = dbframe[(dbframe["class"] != "synthetic")][self.params.metric].values.reshape(-1, 1)
-        print("number of clusters", gaussian(values))
-        kmeans = KMeans(n_clusters=2)
-        kmeans.fit(values)
-        centroids = kmeans.cluster_centers_
-        index = np.argmin(centroids)
-        y_predict = kmeans.predict(values)
-        thresh_1 = np.max(values[y_predict==index])
-        thresh_2 = np.min(values[y_predict != index])
-        thresh = (thresh_1 + thresh_2)/2
-        print("centroids", centroids)
-        print("thresh", thresh)
-        indices = list(dbframe[(dbframe[self.params.metric] <= thresh) & (dbframe["class"] != "synthetic")].index)
+        kappa = np.std(values)/np.max(values)
+        if kappa < 0.12:
+            # no ood detected
+            indices = list(dbframe[dbframe["class"] != "synthetic"].index)
+            thresh = 1.5*np.max(values)
+        else:
+            kmeans = KMeans(n_clusters=2)
+            kmeans.fit(values)
+            centroids = kmeans.cluster_centers_
+            index = np.argmin(centroids)
+            y_predict = kmeans.predict(values)
+            thresh_1 = np.max(values[y_predict==index])
+            thresh_2 = np.min(values[y_predict != index])
+            thresh = (thresh_1 + thresh_2)/2
+            indices = list(dbframe[(dbframe[self.params.metric] <= thresh) & (dbframe["class"] != "synthetic")].index)
         if plot:
             plot_segmented_one_line(self.params.id, db, thresh, self.params.metric)
         return indices

@@ -52,7 +52,7 @@ if __name__ == "__main__":
                     phi_1, phi_2)
     utils = Utils(params)
     in_dist, oo_dist = utils.data_split()
-    cleaning = {}
+    cleaning = []
     for rate in rates:
         params.update_rate(rate)
         params.set_model(load=False)
@@ -78,6 +78,9 @@ if __name__ == "__main__":
         refined_data = utils.params.data[indices]
         after = contamination(refined_data)
         print("after", after)
+        cleaning.append([before[0], after[0], before[1], after[1]])
+    name = utils.params.dataset_name+"_"+utils.params.synthetic + "_" +utils.params.metric
+    np.savetxt(outputs + name + '.csv', cleaning, delimiter=',')
 
 
 

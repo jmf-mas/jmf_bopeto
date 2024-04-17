@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Metrics:
 
     def __init__(self, dynamics):
@@ -39,7 +38,7 @@ class Metrics:
         """
         return np.std(np.diff(self.dynamics, axis=1), axis=1)
 
-    def pc(self):
+    def _pc(self):
         """
         Percentage Change (PC)
         Returns
@@ -48,7 +47,7 @@ class Metrics:
         """
         return np.std(np.diff(self.dynamics, axis=1) / self.dynamics[:, :-1] * 100, axis=1)
 
-    def rmac(self):
+    def _rmac(self):
         """
         Relative Mean Absolute Change (RMAC)
         Returns
@@ -68,9 +67,9 @@ class Metrics:
         mean_value = np.mean(self.dynamics, axis=1)
         std_dev = np.std(self.dynamics, axis=1)
 
-        return (std_dev / mean_value) * 100
+        return std_dev / mean_value
 
-    def iqr(self):
+    def _iqr(self):
         """
         Interquartile range (IQR).
 
@@ -80,3 +79,9 @@ class Metrics:
         q1 = np.percentile(self.dynamics, 25, axis=1)
         q3 = np.percentile(self.dynamics, 75, axis=1)
         return q3 - q1
+
+def contamination(data):
+    in_dist = len(data[data[:, -1] == 0])
+    oo_dist = len(data[data[:, -1] == 1])
+    n = in_dist + oo_dist
+    return n, oo_dist/n

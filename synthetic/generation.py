@@ -8,15 +8,15 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.decomposition import PCA
 
 class FGM:
-    def __init__(self, X, epochs = 5, gamma = 0.1):
-        X = torch.tensor(X, dtype=torch.float32)
-        y = np.array([0]*len(X))
+    def __init__(self, X, gamma = 0.1):
+        X = torch.tensor(X[:, :-1], dtype=torch.float32)
+        y = X[:, -1]
         self.n = int(gamma * len(y))
         y = torch.tensor(y, dtype=torch.float32)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         X = X.to(self.device)
         y = y.to(self.device)
-        self.epochs = epochs
+        self.epochs = 10
         dataset = TensorDataset(X, y)
         self.train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
         self.test_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -88,12 +88,12 @@ class BinaryClassificationModel(nn.Module):
 
         return self.sigmoid(x)
 
-class SyntheticDataGeneration:
+class JMF:
 
     def __init__(self, X, gamma=0.1):
         self.gamma = gamma
         self.X = X
-    def synthetic_data_generation(self):
+    def generate(self):
         f = PCA(n_components=1)
         Z_X = f.fit_transform(self.X)
         N = len(self.X)

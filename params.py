@@ -4,7 +4,7 @@ from models.ae import AE
 
 class Params:
 
-    def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, momentum, epochs, path, metric, synthetic):
+    def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, epochs, path, metric, synthetic):
 
         self.rate = rate
         self.id = None
@@ -13,7 +13,6 @@ class Params:
         self.weight_decay = weight_decay
         self.alpha = alpha
         self.gamma = gamma
-        self.momentum = momentum
         self.epochs = epochs
         self.path = path
         self.dataset_name = os.path.basename(path).split(".")[0]
@@ -40,6 +39,9 @@ class Params:
 
     def update_rate(self, rate):
         self.rate = rate
+
+    def update_metric(self, metric):
+        self.metric = metric
 
 
 

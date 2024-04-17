@@ -19,7 +19,7 @@ class Utils:
             generator = FGM(data, self.params.gamma)
         return generator.generate()
 
-    def data_split(self, size = 300000):
+    def data_split(self, size = 500000):
         data = self.params.data
         in_dist = data[data[:, -1] == 0]
         oo_dist = data[data[:, -1] == 1]

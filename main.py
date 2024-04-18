@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
-    parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.1)
+    parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.0)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--path', type=str, default='/data', help='path to data sets to use')
@@ -53,13 +53,13 @@ if __name__ == "__main__":
         print("before", before)
         synthetic = utils.generate_synthetic_data()
         utils.params.update_data(synthetic)
-        # bopeto
+        np.savetxt(utils.params.dataset_name + '.csv', utils.params.data, delimiter=',')
+        # filtering
         y = utils.params.data[:, -1]
         dynamics = utils.get_reconstruction_errors()
         utils.params.dynamics = np.column_stack((dynamics, y))
         np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
 
-        #filtering
         dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
         utils.params.dynamics = dynamics
         for metric in metrics:
@@ -72,7 +72,7 @@ if __name__ == "__main__":
             cleaning.append([metric, before[0], after[0], before[1], after[1]])
     name = utils.params.dataset_name+"_"+utils.params.synthetic+".csv"
     db = pd.DataFrame(data=cleaning, columns=['metric', 'n1', 'n2', 'r1', 'r2'])
-    db.to_csv(name, index=False)
+    db.to_csv(outputs + name, index=False)
 
 
 

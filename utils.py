@@ -48,7 +48,6 @@ def compute_metrics(val_score, y_val, thresh, pos_label=1):
     return accuracy, precision, recall, f_score, roc, avgpr, cm
 def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
     ratio = 100 * sum(y_val == 0) / len(y_val)
-    print(f"Ratio of normal data:{ratio}")
     q = np.linspace(ratio - 5, min(ratio + 5, 100), nq)
     thresholds = np.percentile(val_score, q)
 

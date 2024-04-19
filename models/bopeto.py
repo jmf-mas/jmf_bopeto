@@ -15,6 +15,7 @@ class BOPETO:
 
     def refine(self, plot=False):
         std = self.metric()
+
         n = len(std)
         iclass = ["synthetic" if self.params.dynamics[i, -1] == 2 else "training" for i in range(n)]
         dbframe = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": iclass})
@@ -22,10 +23,16 @@ class BOPETO:
             target = ["in" if self.params.dynamics[i, -1] == 0 else ("out" if self.params.dynamics[i, -1] == 1 else "synthetic") for i in range(n)]
             db = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": target})
         values = dbframe[(dbframe["class"] != "synthetic")][self.params.metric].values.reshape(-1, 1)
-        kappa = np.std(values)/np.max(values)
+        synthetic_values = dbframe[(dbframe["class"] == "synthetic")][self.params.metric].values.reshape(-1, 1)
+
+        kappa = np.std(values) /(np.max(values) + 0.0000000001)
+        kappa = np.percentile(synthetic_values, 70)
+        print("kappa", kappa)
+        indices = list(dbframe[(dbframe[self.params.metric] <= kappa) & (dbframe["class"] != "synthetic")].index)
+
         if kappa < 0.12:
             # no ood detected
-            indices = list(dbframe[dbframe["class"] != "synthetic"].index)
+            indices_ = list(dbframe[dbframe["class"] != "synthetic"].index)
             thresh = 1.5*np.max(values)
         else:
             kmeans = KMeans(n_clusters=2)
@@ -36,9 +43,10 @@ class BOPETO:
             thresh_1 = np.max(values[y_predict==index])
             thresh_2 = np.min(values[y_predict != index])
             thresh = (thresh_1 + thresh_2)/2
-            indices = list(dbframe[(dbframe[self.params.metric] <= thresh) & (dbframe["class"] != "synthetic")].index)
+            indices_ = list(dbframe[(dbframe[self.params.metric] <= thresh) & (dbframe["class"] != "synthetic")].index)
         if plot:
-            plot_segmented_one_line(self.params.id, db, thresh, self.params.metric)
+            uid = self.params.dataset_name +"_"+self.params.synthetic+"_"+self.params.metric +"_rate_"+str(self.params.rate)
+            plot_segmented_one_line(uid, db, kappa, self.params.metric)
         return indices
 
     def refine_old(self, plot=False):
@@ -73,6 +81,8 @@ class BOPETO:
             if plot:
                 plot_segmented_two_lines(self.params.id, db, threshold_min, threshold_max, self.params.metric)
         return indices
+
+
 
 
 

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from models.ae import AE
+from copy import copy
 
 class Params:
 
@@ -24,10 +25,11 @@ class Params:
         key = list(raw.keys())[0]
         self.data = raw[key]
         self.dynamics = None
+        self.fragment = None
 
     def set_model(self, load=False):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
-        self.model = AE(self.data.shape[1]-1, self.id)
+        self.model = AE(self.data.shape[1]-1, self.id, 0.2)
         if load:
             self.model.load()
 

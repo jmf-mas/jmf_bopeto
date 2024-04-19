@@ -8,15 +8,19 @@ class Utils:
 
     def get_reconstruction_errors(self):
         trainer = Trainer(self.params)
-        errors = trainer.run()
+        errors = trainer.run(True)
+        return errors
+
+    def initial_train(self):
+        trainer = Trainer(self.params)
+        errors = trainer.run(False)
         return errors
 
     def generate_synthetic_data(self):
-        data = self.params.data[:, :-1]
         if self.params.synthetic == "JMF":
-            generator = JMF(data, self.params.gamma)
+            generator = JMF(self.params)
         else:
-            generator = FGM(data, self.params.gamma)
+            generator = FGM(self.params)
         return generator.generate()
 
     def data_split(self, size = 500000):

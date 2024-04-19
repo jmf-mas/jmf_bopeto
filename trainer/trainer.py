@@ -4,6 +4,8 @@ from torch.cuda.amp import GradScaler, autocast
 from .dataset import TabularDataset
 import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class Trainer:
 
     def __init__(self, params):
@@ -11,15 +13,14 @@ class Trainer:
         self.data = torch.tensor(self.params.data[:, :-1], dtype=torch.float32)
         torch.cuda.empty_cache()
 
-    def run(self):
+    def run(self, to_save=False):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
         scaler = GradScaler()
-        return self.train(optimizer, scaler, data_loader)
+        return self.train(optimizer, scaler, data_loader, to_save)
 
-    def train(self, optimizer, scaler, data_loader):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def train(self, optimizer, scaler, data_loader, to_save=False):
         self.params.model.to(device)
         self.data = self.data.to(device)
         reconstruction_errors = []
@@ -31,9 +32,9 @@ class Trainer:
             for batch in data_loader:
                 data = batch['data'].to(device)
                 optimizer.zero_grad()
-
+                noisy_data = self.add_noise(data)
                 with torch.cuda.amp.autocast():
-                    outputs = self.params.model(data)
+                    outputs = self.params.model(noisy_data)
                     loss = torch.nn.MSELoss()(outputs, data)
 
                 scaler.scale(loss).backward()
@@ -46,10 +47,16 @@ class Trainer:
             print(f'Epoch {epoch + 1}, Average Loss: {avg_loss}')
 
             outputs = self.params.model(self.data)
-            errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
-            errors = errors.cpu().detach()
-            if len(reconstruction_errors)==0:
-                reconstruction_errors =  errors
-            else:
-                reconstruction_errors = np.column_stack((reconstruction_errors, errors))
+            if to_save:
+                errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
+                errors = errors.cpu().detach()
+                if len(reconstruction_errors)==0:
+                    reconstruction_errors =  errors
+                else:
+                    reconstruction_errors = np.column_stack((reconstruction_errors, errors))
         return reconstruction_errors
+
+    def add_noise(self, data, noise_factor=0.5):
+        noise = noise_factor * torch.randn_like(data)
+        noisy_data = data + noise
+        return noisy_data

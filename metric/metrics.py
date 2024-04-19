@@ -9,7 +9,7 @@ class Metrics:
         ----------
         dynamics of type array (number of data points, number of iterations)
         """
-        self.dynamics = dynamics
+        self.dynamics = dynamics[:, :-1]
 
     def mac(self):
         """
@@ -37,6 +37,15 @@ class Metrics:
 
         """
         return np.std(np.diff(self.dynamics, axis=1), axis=1)
+
+    def std(self):
+        """
+        Standard Deviation of Changes
+        Returns
+        -------
+
+        """
+        return np.std(self.dynamics, axis=1)
 
     def _pc(self):
         """

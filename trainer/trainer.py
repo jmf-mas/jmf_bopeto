@@ -102,6 +102,19 @@ class TrainerAE:
         self.params.val_scores = torch.nn.functional.mse_loss(outputs_val, val, reduction='none').mean(1).cpu().detach().numpy()
         self.params.test_scores = torch.nn.functional.mse_loss(outputs_test, test, reduction='none').mean(1).cpu().detach().numpy()
 
+class TrainerOCSVM:
+
+    def __init__(self, params):
+        self.params = params
+
+    def run(self):
+        return self.train()
+
+    def train(self):
+        self.params.model.fit(self.params.data[:, :-1])
+        y_pred = self.params.model.predict(self.params.test[:, :-1])
+        y_pred = np.where(y_pred == 1, 0, y_pred)
+        self.params.y_pred = np.where(y_pred == -1, 1, y_pred)
 def add_noise(data, noise_factor=0.5):
     noise = noise_factor * torch.randn_like(data)
     noisy_data = data + noise

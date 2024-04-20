@@ -46,6 +46,17 @@ def compute_metrics(val_score, y_val, thresh, pos_label=1):
     cm = sk_metrics.confusion_matrix(y_true, y_pred, labels=[1, 0])
 
     return accuracy, precision, recall, f_score, roc, avgpr, cm
+
+def compute_metrics_binary(y_pred, y_val, pos_label=1):
+    y_true = y_val.astype(int)
+
+    accuracy = sk_metrics.accuracy_score(y_true, y_pred)
+    precision, recall, f_score, _ = sk_metrics.precision_recall_fscore_support(
+        y_true, y_pred, average='binary', pos_label=pos_label
+    )
+    cm = sk_metrics.confusion_matrix(y_true, y_pred, labels=[1, 0])
+
+    return accuracy, precision, recall, f_score, cm
 def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
     ratio = 100 * sum(y_val == 0) / len(y_val)
     q = np.linspace(ratio - 5, min(ratio + 5, 100), nq)

@@ -62,6 +62,7 @@ class ParamsAE:
         self.num_workers = num_workers
         self.val_scores = None
         self.test_scores = None
+        self.y_pred = None
 
 
 

@@ -64,6 +64,27 @@ class ParamsAE:
         self.test_scores = None
         self.y_pred = None
 
+class ParamsDaGMM:
+    def __init__(self, batch_size, learning_rate, epochs, num_workers, gmm_k, lambda_energy, lambda_cov_diag, log_step, sample_step, model_save_step):
+        self.id = None
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
+        self.num_workers = num_workers
+        self.epochs = epochs
+        self.data = None
+        self.val = None
+        self.test = None
+        self.model = None
+        self.val_scores = None
+        self.test_scores = None
+        self.y_pred = None
+        self.gmm_k = gmm_k
+        self.lambda_energy = lambda_energy
+        self.lambda_cov_diag = lambda_cov_diag
+        self.log_step = log_step
+        self.sample_step = sample_step
+        self.model_save_step = model_save_step
+
 
 
 

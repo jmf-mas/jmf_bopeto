@@ -81,7 +81,7 @@ if __name__ == "__main__":
             refined_data = utils.params.data[indices]
             after = contamination(refined_data)
             print("after with", metric, after)
-            data[name + "_train_bopeto_" +metric+"_"+ str(after[1])] = refined_data
+            data[name + "_train_bopeto_" +metric+"_"+ str(before[1])] = refined_data
             cleaning.append([metric, before[0], after[0], before[1], after[1]])
     name = utils.params.dataset_name+"_"+utils.params.synthetic
     db = pd.DataFrame(data=cleaning, columns=['metric', 'n1', 'n2', 'r1', 'r2'])

@@ -1,7 +1,8 @@
-from trainer.trainer import Trainer
-import numpy as np
-from synthetic.generation import JMF, FGM
 from sklearn import metrics as sk_metrics
+import torch
+import numpy as np
+from utils import *
+from sklearn.metrics import precision_recall_fscore_support as prf, accuracy_score
 
 class Utils:
     def __init__(self, params):
@@ -94,6 +95,80 @@ def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
         "Thresh_star": thresholds[arm],
         "Quantile_star": qis[arm]
     }
+
+def compute_metrics(params):
+    params.model.eval()
+    N = 0
+    mu_sum = 0
+    cov_sum = 0
+    gamma_sum = 0
+
+    for it, (input_data, labels) in enumerate(self.data_loader):
+        input_data = self.to_var(input_data)
+        enc, dec, z, gamma = params.model.dagmm(input_data)
+        phi, mu, cov = params.model.compute_gmm_params(z, gamma)
+
+        batch_gamma_sum = torch.sum(gamma, dim=0)
+
+        gamma_sum += batch_gamma_sum
+        mu_sum += mu * batch_gamma_sum.unsqueeze(-1)  # keep sums of the numerator only
+        cov_sum += cov * batch_gamma_sum.unsqueeze(-1).unsqueeze(-1)  # keep sums of the numerator only
+
+        N += input_data.size(0)
+
+    train_phi = gamma_sum / N
+    train_mu = mu_sum / gamma_sum.unsqueeze(-1)
+    train_cov = cov_sum / gamma_sum.unsqueeze(-1).unsqueeze(-1)
+
+    print("N:", N)
+    print("phi :\n", train_phi)
+    print("mu :\n", train_mu)
+    print("cov :\n", train_cov)
+
+    train_energy = []
+    train_labels = []
+    train_z = []
+    for it, (input_data, labels) in enumerate(self.data_loader):
+        input_data = self.to_var(input_data)
+        enc, dec, z, gamma = params.model(input_data)
+        sample_energy, cov_diag = params.model.compute_energy(z, phi=train_phi, mu=train_mu, cov=train_cov,
+                                                            size_average=False)
+
+        train_energy.append(sample_energy.data.cpu().numpy())
+        train_z.append(z.data.cpu().numpy())
+        train_labels.append(labels.numpy())
+
+    train_energy = np.concatenate(train_energy, axis=0)
+    train_z = np.concatenate(train_z, axis=0)
+    train_labels = np.concatenate(train_labels, axis=0)
+
+
+    test_energy = []
+    test_labels = []
+    test_z = []
+    for it, (input_data, labels) in enumerate(self.data_loader):
+        input_data = self.to_var(input_data)
+        enc, dec, z, gamma = params.model.dagmm(input_data)
+        sample_energy, cov_diag = params.model.compute_energy(z, size_average=False)
+        test_energy.append(sample_energy.data.cpu().numpy())
+        test_z.append(z.data.cpu().numpy())
+        test_labels.append(labels.numpy())
+
+    test_energy = np.concatenate(test_energy, axis=0)
+    test_z = np.concatenate(test_z, axis=0)
+    test_labels = np.concatenate(test_labels, axis=0)
+
+    combined_energy = np.concatenate([train_energy, test_energy], axis=0)
+    combined_labels = np.concatenate([train_labels, test_labels], axis=0)
+
+    thresh = np.percentile(combined_energy, 100 - 20)
+
+    pred = (test_energy > thresh).astype(int)
+    gt = test_labels.astype(int)
+
+    accuracy = accuracy_score(gt, pred)
+    precision, recall, f_score, support = prf(gt, pred, average='binary')
+    return accuracy, precision, recall, f_score
 
 
 

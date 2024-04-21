@@ -1,7 +1,8 @@
 from sklearn import metrics as sk_metrics
 import torch
 import numpy as np
-from utils import *
+from trainer.trainer import *
+from synthetic.generation import JMF, FGM
 from sklearn.metrics import precision_recall_fscore_support as prf, accuracy_score
 
 class Utils:
@@ -96,7 +97,7 @@ def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
         "Quantile_star": qis[arm]
     }
 
-def compute_metrics(params):
+def compute_metrics_(params):
     params.model.eval()
     N = 0
     mu_sum = 0

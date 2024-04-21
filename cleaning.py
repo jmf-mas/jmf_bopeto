@@ -12,13 +12,13 @@ outputs = "outputs/"
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bopeto",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-m', '--metrics', metavar='N', type=str, nargs='+', help='list of dynamics metrics', default=['mac', 'sdc', 'msc', 'std'])
+    parser.add_argument('-m', '--metrics', metavar='N', type=str, nargs='+', help='list of dynamics metrics', default=['sdc'])
     parser.add_argument('-b', '--batch_size', nargs='?', const=1, type=int, default=64)
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
     parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.1)
-    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
+    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=10)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--name', type=str, default='kdd', help='data set name')
     parser.add_argument('--synthetic', type=str, default='FGM', help='path to data sets to use')

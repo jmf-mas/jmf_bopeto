@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 folder = "data/"
 
@@ -51,6 +52,16 @@ def data_split(path):
     test_dist = np.vstack((in_dist_test, out_dist_test))
     np.random.shuffle(val_dist)
     np.random.shuffle(test_dist)
+
+    max_n_train = min(np.random.randint(120000, 130000, 1)[0], in_dist_train.shape[0])
+    max_n_val = min(np.random.randint(80000, 100000, 1)[0],val_dist.shape[0])
+    max_n_contamination = min(np.random.randint(40000, 50000, 1)[0], out_dist_train.shape[0])
+    max_n_test = min(np.random.randint(150000, 170000, 1)[0], test_dist.shape[0])
+
+    in_dist_train = pd.DataFrame(in_dist_train).sample(n=max_n_train).values
+    val_dist = pd.DataFrame(val_dist).sample(n=max_n_val).values
+    test_dist = pd.DataFrame(test_dist).sample(n=max_n_test).values
+    out_dist_train = pd.DataFrame(out_dist_train).sample(n=max_n_contamination).values
 
     data_dict = {key + "_train": in_dist_train,
                  key + "_val": val_dist,

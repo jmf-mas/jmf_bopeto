@@ -6,9 +6,7 @@ import numpy as np
 import os
 import time
 import datetime
-from models.dagmm import DaGMM
 from torch.autograd import Variable
-from tqdm import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -40,7 +38,7 @@ class Trainer:
                 optimizer.zero_grad()
                 noisy_data = add_noise(data)
                 with torch.cuda.amp.autocast():
-                    outputs = self.params.model(noisy_data)
+                    outputs = self.params.model(data)
                     loss = torch.nn.MSELoss()(outputs, data)
 
                 scaler.scale(loss).backward()
@@ -54,7 +52,8 @@ class Trainer:
 
             outputs = self.params.model(self.data)
             if to_save:
-                errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
+                #errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
+                errors = torch.nn.functional.cosine_similarity(outputs, self.data, dim=1)
                 errors = errors.cpu().detach()
                 if len(reconstruction_errors)==0:
                     reconstruction_errors =  errors

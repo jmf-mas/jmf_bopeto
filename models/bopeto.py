@@ -49,7 +49,7 @@ class BOPETO:
             indices = list(dbframe[(dbframe["class"] != "synthetic")].index)
             if plot:
                 plot_segmented(self.params.id, db, self.params.metric)
-        elif kappa >= self.params.phi_0 and kappa < self.params.phi_1:
+        elif self.params.phi_0 <= kappa < self.params.phi_1:
             threshold = dbframe[(dbframe["class"] == "synthetic")][self.params.metric].quantile(.2)
             indices = list(dbframe[(dbframe[self.params.metric] < threshold) & (dbframe["class"] != "synthetic")].index)
             if plot:

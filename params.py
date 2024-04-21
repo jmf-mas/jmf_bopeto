@@ -30,7 +30,7 @@ class Params:
         self.model.name = self.id
 
     def init_model(self, n, load=False):
-        self.model = AE(n, self.dataset_name, 0.2)
+        self.model = AE(n, self.dataset_name, 0.0)
         if load:
             self.model.load()
         self.model.save()

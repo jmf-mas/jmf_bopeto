@@ -41,7 +41,7 @@ if __name__ == "__main__":
     data = splitter.split()
     params = Params(batch_size, lr, wd, nw, alpha, gamma, epochs, name , metric, synthetic)
 
-    rates = np.linspace(0, 1, 11)
+    rates = np.linspace(0, 1, 11)[1:]
     cleaning = []
     in_dist = data[name + "_train"]
     n_out = len(data[name + "_contamination"])

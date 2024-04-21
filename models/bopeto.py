@@ -2,8 +2,6 @@ from plot.filtering import plot_segmented_one_line, plot_segmented_two_lines, pl
 import pandas as pd
 from scipy.stats import variation as cv
 from metric.metrics import Metrics
-from sklearn.cluster import KMeans
-import numpy as np
 from sklearn.ensemble import IsolationForest
 
 

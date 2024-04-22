@@ -1,5 +1,4 @@
 import torch.nn as nn
-from pathlib import Path
 import gzip
 import pickle
 
@@ -10,54 +9,54 @@ from typing import Tuple, List
 
 class AECleaning(BaseAEModel):
 
-    def __init__(self, in_dim, name, dropout=0):
+    def __init__(self, params):
         super(AECleaning, self).__init__(params)
-        if "cifar" in name or "svhn" in name or "mnist" in name:
+        if "cifar" in params.dataset_name or "svhn" in params.dataset_name or "mnist" in params.dataset_name:
             self.enc = nn.Sequential(
-                nn.Linear(in_dim, 512),
+                nn.Linear(params.in_features, 512),
                 nn.Linear(512, 256),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(256, 128),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(128, 64),
                 nn.Linear(64, 32),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(32, 16),
                 nn.Linear(16, 8)
             )
 
         else:
             self.enc = nn.Sequential(
-                nn.Linear(in_dim, 64),
+                nn.Linear(params.in_features, 64),
                 nn.Linear(64, 32),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(32, 16),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(16, 8)
             )
-        self.name = name
+        self.name = params.dataset_name
 
-        if "cifar" in name or "svhn" in name or "mnist" in name:
+        if "cifar" in params.dataset_name or "svhn" in params.dataset_name or "mnist" in params.dataset_name:
             self.dec = nn.Sequential(
                 nn.Linear(8, 16),
                 nn.Linear(16, 32),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(32, 64),
                 nn.Linear(64, 128),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(128, 256),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(256, 512),
-                nn.Linear(512, in_dim)
+                nn.Linear(512, params.in_features)
             )
         else:
             self.dec = nn.Sequential(
                 nn.Linear(8, 16),
                 nn.Linear(16, 32),
-                nn.Dropout(dropout),
+                nn.Dropout(params.dropout),
                 nn.Linear(32, 64),
-                nn.Dropout(dropout),
-                nn.Linear(64, in_dim)
+                nn.Dropout(params.dropout),
+                nn.Linear(64, params.in_features)
             )
 
     def forward(self, x):

@@ -42,15 +42,16 @@ class Params:
         self.c = .8
         self.R = None
         self.model = None
+        self.dropout = 0
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
-        self.model = AECleaning(self.in_features, self.dataset_name, 0.2)
+        self.model = AECleaning(self)
         self.model.load()
         self.model.name = self.id
 
     def init_model(self, load=False):
-        self.model = AECleaning(self.in_features, self.dataset_name, 0.0)
+        self.model = AECleaning(self)
         if load:
             self.model.load()
         self.model.save()

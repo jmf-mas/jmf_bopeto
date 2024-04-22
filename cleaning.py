@@ -36,6 +36,7 @@ if __name__ == "__main__":
     params.epochs = configs['epochs']
     params.synthetic  = configs['synthetic']
     params.metric = 'sdc'
+    params.model_name = "AECleaning"
     splitter = Splitter(params.dataset_name)
 
     data = splitter.split()

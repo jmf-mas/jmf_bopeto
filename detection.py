@@ -203,27 +203,28 @@ if __name__ == "__main__":
     filter_keys = list(filter(lambda s: "train" in s, keys))
     params.test = data[params.dataset_name+"_test"]
     params.val = data[params.dataset_name + "_val"]
+    params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
     backup = None
     for key in filter_keys:
         print("training on "+key)
         params.data = data[key]
         tr = resolve_model_trainer(params)
-        tr.run()
-        tr.test()
+        tr.train()
         if tr.name == "sklearn":
+            y_pred = tr.test(params.test[:, :-1])
             y_test = params.test[:, -1]
-            metrics = compute_metrics_binary(tr.params.y_pred, y_test, pos_label=1)
+            metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
             contamination, model_name_ = get_contamination(key, params.model)
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
         else:
-            y_val = params.val[:, -1]
-            y_test = params.test[:, -1]
-            threshold = estimate_optimal_threshold(tr.params.val_scores, y_val, pos_label=1, nq=100)
+            y_val, score_val = tr.test(params.val)
+            y_test, score_test = tr.test(params.test)
+            threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
             threshold = threshold["Thresh_star"]
-            metrics = compute_metrics(tr.params.test_scores, y_test, threshold, pos_label=1)
+            metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
             contamination, model_name_ = get_contamination(key, params.model)
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf

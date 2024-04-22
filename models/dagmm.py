@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 import torch
 
-from .ae import AE
+from .ae import AEDetecting
 from .base import BaseModel
 from torch import nn
 
@@ -27,16 +27,16 @@ class DAGMM(BaseModel):
         self.cosim = nn.CosineSimilarity()
         self.softmax = nn.Softmax(dim=-1)
 
-    def resolve_params(self, dataset_name: str):
+    def resolve_params(self):
         latent_dim = self.latent_dim or 1
-        if dataset_name == 'Arrhythmia':
+        if self.params.dataset_name == 'Arrhythmia':
             K = 2
             gmm_layers = [
                 (latent_dim + 2, 10, nn.Tanh()),
                 (None, None, nn.Dropout(0.5)),
                 (10, K, nn.Softmax(dim=-1))
             ]
-        elif dataset_name == "Thyroid":
+        elif self.params.dataset_name == "Thyroid":
             K = 2
             gmm_layers = [
                 (latent_dim + 2, 10, nn.Tanh()),
@@ -52,12 +52,12 @@ class DAGMM(BaseModel):
             ]
         self.latent_dim = latent_dim
         self.K = K
-        self.ae = AE(self.params.val.shape[1]-1, "ae_"+self.params.dataset_name, 0.0)
+        self.ae = AEDetecting.from_dataset(self.params)
         self.gmm = GMM(gmm_layers)
 
     def forward(self, x: torch.Tensor):
-        code = self.ae.enc(x)
-        x_prime = self.ae.dec(code)
+        code = self.ae.encoder(x)
+        x_prime = self.ae.decoder(code)
         rel_euc_dist = self.relative_euclidean_dist(x, x_prime)
         cosim = self.cosim(x, x_prime)
         z_r = torch.cat([code, rel_euc_dist.unsqueeze(-1), cosim.unsqueeze(-1)], dim=1)

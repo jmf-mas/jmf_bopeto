@@ -43,8 +43,9 @@ if __name__ == "__main__":
     rates = np.linspace(0, 1, 11)[1:]
     cleaning = []
     in_dist = data[params.dataset_name + "_train"]
+    params.in_features = in_dist.shape[1] - 1
     n_out = len(data[params.dataset_name + "_contamination"])
-    params.init_model(in_dist.shape[1]-1, load=False)
+    params.init_model(load=False)
     utils = Utils(params)
     for rate in rates:
         ind = np.arange(int(rate*n_out))

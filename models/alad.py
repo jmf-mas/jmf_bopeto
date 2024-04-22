@@ -34,12 +34,13 @@ class ALAD(BaseModel):
         self.D_xz = None
         self.latent_dim = None
         self.name = "ALAD"
+        self.params = params
         super(ALAD, self).__init__(params)
 
-    def resolve_params(self, dataset_name: str):
-        if dataset_name in ("KDD10", "NSLKDD", "Thyroid"):
+    def resolve_params(self):
+        if self.params.dataset_name in ("KDD10", "NSLKDD", "Thyroid"):
             self.latent_dim = 32
-        elif dataset_name == "Arrhythmia":
+        elif self.params.dataset_name == "Arrhythmia":
             self.latent_dim = 64
         else:
             self.latent_dim = self.in_features // 2

@@ -11,12 +11,12 @@ class Utils:
 
     def get_reconstruction_errors(self):
         trainer = Trainer(self.params)
-        errors = trainer.run(True)
+        errors = trainer.train(True)
         return errors
 
     def initial_train(self):
         trainer = Trainer(self.params)
-        errors = trainer.run(False)
+        errors = trainer.train(False)
         return errors
 
     def generate_synthetic_data(self):

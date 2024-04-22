@@ -1,13 +1,11 @@
 from torch.cuda.amp import GradScaler, autocast
 
-from models.ae import AE
+from models.ae import AECleaning, AEDetecting
+from models.alad import ALAD
 from models.dagmm import DAGMM
 from models.dsebm import DSEBM
 from .base import BaseTrainer
 from .dataset import TabularDataset
-import os
-import time
-import datetime
 import numpy as np
 from collections import defaultdict
 from typing import Union
@@ -32,14 +30,12 @@ class Trainer:
         self.data = torch.tensor(self.params.data[:, :-1], dtype=torch.float32)
         torch.cuda.empty_cache()
 
-    def run(self, to_save=False):
+    def train(self, to_save=False):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
         scaler = GradScaler()
         return self.train(optimizer, scaler, data_loader, to_save)
-
-    def train(self, optimizer, scaler, data_loader, to_save=False):
         self.params.model.to(self.params.device)
         self.data = self.data.to(self.params.device)
         reconstruction_errors = []
@@ -76,23 +72,17 @@ class Trainer:
                     reconstruction_errors = np.column_stack((reconstruction_errors, errors))
         return reconstruction_errors
 
-class TrainerAE:
-
+class TrainerAE(BaseTrainer):
     def __init__(self, params):
-        self.params = params
-        self.name = "ae"
-        torch.cuda.empty_cache()
-        self.model = AE(params.val.shape[1]-1, params.model+"_"+params.dataset_name, 0.0)
-        self.model.load()
+        self.model = AEDetecting(params)
+        self.model.to(params.device)
+        super(TrainerAE, self).__init__(params)
 
-    def run(self):
+    def train(self):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         scaler = GradScaler()
-        return self.train(optimizer, scaler, data_loader)
-
-    def train(self, optimizer, scaler, data_loader):
         self.model.to(self.params.device)
 
         for epoch in range(self.params.epochs):
@@ -115,7 +105,8 @@ class TrainerAE:
             avg_loss = total_loss / len(data_loader)
             print(f'Epoch {epoch + 1}, Average Loss: {avg_loss}')
 
-    def test(self):
+
+    def test_(self):
         val = torch.tensor(self.params.val[:, :-1], dtype=torch.float32)
         test = torch.tensor(self.params.test[:, :-1], dtype=torch.float32)
         val = val.to(self.params.device)
@@ -138,21 +129,19 @@ class TrainerSK:
         else:
             self.model = IsolationForest(n_estimators=50, random_state=42)
 
-    def run(self):
-        return self.train()
-
     def train(self):
         self.model.fit(self.params.data[:, :-1])
-    def test(self):
-        y_pred = self.model.predict(self.params.test[:, :-1])
+    def test(self, data):
+        y_pred = self.model.predict(data)
         y_pred = np.where(y_pred == 1, 0, y_pred)
         self.params.y_pred = np.where(y_pred == -1, 1, y_pred)
 
 class TrainerDAGMM(BaseTrainer):
     def __init__(self, params) -> None:
         self.params = params
-        model = DAGMM(params)
-        super(TrainerDAGMM, self).__init__(model)
+        self.model = DAGMM(params)
+        self.model.to(params.device)
+        super(TrainerDAGMM, self).__init__(params)
         self.lamb_1 = params.lambda_1
         self.lamb_2 = params.lambda_2
         self.phi = None
@@ -160,8 +149,6 @@ class TrainerDAGMM(BaseTrainer):
         self.cov_mat = None
         self.covs = None
 
-    def run(self):
-        self.train()
 
     def train_iter(self, sample):
         z_c, x_prime, _, z_r, gamma_hat = self.model(sample)
@@ -178,20 +165,23 @@ class TrainerDAGMM(BaseTrainer):
         rec_err = ((x - x_prime) ** 2).mean()
         return rec_err + self.lamb_1 * energy + self.lamb_2 * pen_cov_mat
 
-    def test(self, dataset: DataLoader):
+    def test(self, data):
         self.model.eval()
+        test_set = TabularDataset(data)
+        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
+                                 num_workers=self.params.num_workers)
 
         with torch.no_grad():
             scores, y_true = [], []
-            for row in dataset:
-                X, y = row[0], row[1]
-                X = X.to(self.device).float()
+            for row in test_loader:
+                X = row['data'].to(self.params.device)
+                y = row['target'].to(self.params.device)
                 # forward pass
                 code, x_prime, cosim, z, gamma = self.model(X)
                 sample_energy, pen_cov_mat = self.estimate_sample_energy(
                     z, self.phi, self.mu, self.cov_mat, average_energy=False
                 )
-                y_true.extend(y)
+                y_true.extend(y.cpu().numpy())
                 scores.extend(sample_energy.cpu().numpy())
 
         return np.array(y_true), np.array(scores)
@@ -233,7 +223,7 @@ class TrainerDAGMM(BaseTrainer):
         mu_z = z.unsqueeze(1) - mu.unsqueeze(0)
 
         # scaler
-        inv_cov_mat = torch.cholesky_inverse(torch.cholesky(cov_mat))
+        inv_cov_mat = torch.cholesky_inverse(torch.linalg.cholesky(cov_mat))
         # inv_cov_mat = torch.linalg.inv(cov_mat)
         det_cov_mat = torch.linalg.cholesky(2 * np.pi * cov_mat)
         det_cov_mat = torch.diagonal(det_cov_mat, dim1=1, dim2=2)
@@ -272,9 +262,9 @@ class TrainerDAGMM(BaseTrainer):
 class TrainerDSEBM(BaseTrainer):
     def __init__(self, params):
         assert params.score_metric == "reconstruction" or params.score_metric == "energy"
-        super(TrainerDSEBM, self).__init__(params)
         self.model = DSEBM(params)
         self.model.to(params.device)
+        super(TrainerDSEBM, self).__init__(params)
         self.score_metric = params.score_metric
         self.criterion = nn.BCEWithLogitsLoss()
         self.b_prime = Parameter(torch.Tensor(self.model.in_features).to(self.device))
@@ -295,9 +285,6 @@ class TrainerDSEBM(BaseTrainer):
         fx_noise = (X_noise - dEn_dX[0])
         return self.loss(X, fx_noise)
 
-    def run(self):
-        self.train()
-
     def score(self, sample: torch.Tensor):
         # Evaluation of the score based on the energy
         with torch.no_grad():
@@ -313,13 +300,16 @@ class TrainerDSEBM(BaseTrainer):
         rec_errs = torch.linalg.norm(dEn_dX, 2, keepdim=False, dim=1)
         return energies.cpu().numpy(), rec_errs.cpu().numpy()
 
-    def test(self, dataset: DataLoader) -> Union[np.array, np.array]:
+    def test(self, data):
         self.model.eval()
+        test_set = TabularDataset(data)
+        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
+                                 num_workers=self.params.num_workers)
         y_true, scores = [], []
         scores_e, scores_r = [], []
-        for row in dataset:
-            X, y = row[0], row[1]
-            X = X.to(self.device).float()
+        for row in test_loader:
+            X = row['data'].to(self.params.device)
+            y = row['target'].to(self.params.device)
             score_e, score_r = self.score(X)
 
             y_true.extend(y.cpu().tolist())
@@ -364,7 +354,10 @@ class TrainerALAD(BaseTrainer):
         self.params = params
         self.criterion = nn.BCEWithLogitsLoss()
         self.optim_ge, self.optim_d = None, None
+        self.model = ALAD(params)
+        self.model.to(params.device)
         super(TrainerALAD, self).__init__(params)
+
 
     def train_iter(self, sample):
         pass
@@ -416,22 +409,11 @@ class TrainerALAD(BaseTrainer):
 
         return loss_ge
 
-    def run(self):
-        self.train()
-
     def train(self):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
-        val_set = TabularDataset(self.params.val)
-        val_loader = DataLoader(val_set, batch_size=self.params.batch_size, shuffle=True,
-                                num_workers=self.params.num_workers)
-        test_set = TabularDataset(self.params.val)
-        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
-                                 num_workers=self.params.num_workers)
         self.model.train()
-
-        should_stop = False
         for epoch in range(self.n_epochs):
             ge_losses, d_losses = 0, 0
             with trange(len(data_loader)) as t:
@@ -464,25 +446,6 @@ class TrainerALAD(BaseTrainer):
                         loss_ge='{:05.4f}'.format(loss_ge),
                     )
                     t.update()
-            if val_loader is not None:
-                val_loss = self.eval(val_loader)
-                results = self._eval(test_loader)
-
-                if self.params.early_stopping:
-                    should_stop = self.early_stopper.stop(epoch=epoch,
-                                                          val_loss=val_loss,
-                                                          train_loss=d_losses + ge_losses,
-                                                          val_auc=results["proc1p"],
-                                                          test_f1=results["f_score"])
-
-                    print(f'\nVal loss :{val_loss} | Train loss: {d_losses + ge_losses}'
-                          f'| early_stop? {should_stop} | patience:{self.early_stopper.counter}  ')
-                print(results)
-
-                if should_stop:
-                    break
-        if self.params.early_stopping:
-            self.early_stopper.get_best_vl_metrics()
 
     def eval(self, dataset: DataLoader):
         self.model.eval()

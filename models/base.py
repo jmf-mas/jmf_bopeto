@@ -12,7 +12,7 @@ class BaseModel(nn.Module):
         self.device = params.device
         self.n_instances, self.in_features = params.data.shape
         self.in_features -=1
-        self.resolve_params(self.dataset_name)
+        self.resolve_params()
 
     def get_params(self) -> dict:
         return {
@@ -36,7 +36,7 @@ class BaseModel(nn.Module):
         return model
 
     @abstractmethod
-    def resolve_params(self, dataset_name: str):
+    def resolve_params(self):
         pass
 
     def save(self, filename):
@@ -50,9 +50,9 @@ class BaseShallowModel(ABC):
         self.device = device
         self.in_features = in_features
         self.n_instances = n_instances
-        self.resolve_params(dataset_name)
+        self.resolve_params()
 
-    def resolve_params(self, dataset_name: str):
+    def resolve_params(self):
         pass
 
     def reset(self):

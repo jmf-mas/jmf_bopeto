@@ -9,24 +9,26 @@ from torch import optim
 from tqdm import trange
 from torch.cuda.amp import GradScaler, autocast
 from metric.utils import Patience
+from models.alad import ALAD
 from trainer.dataset import TabularDataset
 
 
 class BaseTrainer(ABC):
 
-    def __init__(self, model):
-        self.device = model.params.device
-        self.model = model.to(self.device)
-        self.batch_size = model.params.batch_size
-        self.n_jobs_dataloader = model.params.n_jobs_dataloader
-        self.n_epochs = model.params.epochs
-        self.lr = model.params.learning_rate
-        self.weight_decay = model.params.weight_decay
-        self.optimizer = self.set_optimizer(self.weight_decay)
+    def __init__(self, params):
+        self.params = params
+        self.device = params.device
+        self.model = ALAD(params)
+        self.model.to(self.device)
+        self.batch_size = params.batch_size
+        self.n_jobs_dataloader = params.n_jobs_dataloader
+        self.n_epochs = params.epochs
+        self.lr = params.learning_rate
+        self.weight_decay = params.weight_decay
+        self.optimizer = self.set_optimizer()
 
-        patience = model.params.patience
+        patience = params.patience
         self.early_stopper = Patience(patience=patience, use_train_loss=False, model=self.model)
-        self.params = model.params
 
     @abstractmethod
     def train_iter(self, sample: torch.Tensor, **kwargs):
@@ -48,8 +50,8 @@ class BaseTrainer(ABC):
         """
         pass
 
-    def set_optimizer(self, weight_decay):
-        return optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=weight_decay)
+    def set_optimizer(self):
+        return optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.params.weight_decay)
 
     def train(self):
         dataset = TabularDataset(self.params.data)

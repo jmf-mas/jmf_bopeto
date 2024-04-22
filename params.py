@@ -35,6 +35,7 @@ class Params:
         self.reg_covar = 0.1
         self.n_jobs_dataloader = 0
         self.early_stopping = True
+        self.score_metric = "reconstruction"
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)

@@ -5,7 +5,7 @@ from torch.nn import Parameter
 from .base import BaseModel
 
 
-class DsEBM(BaseModel):
+class DSEBM(BaseModel):
     def __init__(self, params):
         super(DSEBM, self).__init__(params)
         self.params = params

@@ -1,5 +1,5 @@
 import numpy as np
-from models.ae import AE
+from models.ae import AECleaning
 import torch
 
 
@@ -36,15 +36,20 @@ class Params:
         self.n_jobs_dataloader = 0
         self.early_stopping = True
         self.score_metric = "reconstruction"
+        self.ae_latent_dim = 1
+        self.in_features = None
+        self.D = 8
+        self.c = .8
+        self.R = None
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
-        self.model = AE(self.data.shape[1]-1, self.dataset_name, 0.2)
+        self.model = AECleaning(self.in_features, self.dataset_name, 0.2)
         self.model.load()
         self.model.name = self.id
 
-    def init_model(self, n, load=False):
-        self.model = AE(n, self.dataset_name, 0.0)
+    def init_model(self, load=False):
+        self.model = AECleaning(self.in_features, self.dataset_name, 0.0)
         if load:
             self.model.load()
         self.model.save()

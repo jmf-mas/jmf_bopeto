@@ -5,11 +5,6 @@ from torch.autograd import Variable
 from .base import BaseModel
 
 
-# learning_rate = 1e-5
-# batch_size = 50
-# latent_dim = 32
-# init_kernel = tf.contrib.layers.xavier_initializer()
-
 def weights_init_xavier(m):
     # Copied from https://github.com/JohnEfan/PyTorch-ALAD/blob/6e7c4a9e9f327b5b08936376f59af2399d10dc9f/utils/utils.py#L4
     classname = m.__class__.__name__
@@ -34,12 +29,13 @@ class ALAD(BaseModel):
         self.D_xz = None
         self.latent_dim = None
         self.name = "ALAD"
+        self.params = params
         super(ALAD, self).__init__(params)
 
-    def resolve_params(self, dataset_name: str):
-        if dataset_name in ("KDD10", "NSLKDD", "Thyroid"):
+    def resolve_params(self):
+        if self.params.dataset_name in ("KDD10", "NSLKDD", "Thyroid"):
             self.latent_dim = 32
-        elif dataset_name == "Arrhythmia":
+        elif self.params.dataset_name == "Arrhythmia":
             self.latent_dim = 64
         else:
             self.latent_dim = self.in_features // 2

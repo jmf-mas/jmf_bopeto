@@ -7,12 +7,12 @@ from .base import BaseModel
 
 class DSEBM(BaseModel):
     def __init__(self, params):
-        super(DSEBM, self).__init__(params)
         self.params = params
-        self.name = "DsEBM"
+        super(DSEBM, self).__init__(params)
+        self.name = "DSEBM"
 
-    def resolve_params(self, dataset_name: str):
-        if dataset_name == 'Arrhythmia' or dataset_name == 'Thyroid':
+    def resolve_params(self):
+        if self.params.dataset_name == 'Arrhythmia' or self.params.dataset_name == 'Thyroid':
             self.fc_1 = nn.Linear(self.in_features, 10)
             self.fc_2 = nn.Linear(10, 2)
             self.softp = nn.Softplus()

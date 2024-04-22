@@ -3,13 +3,12 @@ import torch
 
 from abc import ABC, abstractmethod
 from typing import Union
-from sklearn import metrics as sk_metrics
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
 from tqdm import trange
-from torch.cuda.amp import GradScaler, autocast
+
+from metric.metrics import _estimate_threshold_metrics
 from metric.utils import Patience
-from models.alad import ALAD
 from trainer.dataset import TabularDataset
 
 
@@ -18,14 +17,13 @@ class BaseTrainer(ABC):
     def __init__(self, params):
         self.params = params
         self.device = params.device
-        self.model = ALAD(params)
-        self.model.to(self.device)
         self.batch_size = params.batch_size
         self.n_jobs_dataloader = params.n_jobs_dataloader
         self.n_epochs = params.epochs
         self.lr = params.learning_rate
         self.weight_decay = params.weight_decay
         self.optimizer = self.set_optimizer()
+        self.name = 'torch'
 
         patience = params.patience
         self.early_stopper = Patience(patience=patience, use_train_loss=False, model=self.model)
@@ -56,24 +54,13 @@ class BaseTrainer(ABC):
     def train(self):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-        val_set = TabularDataset(self.params.val)
-        val_loader = DataLoader(val_set, batch_size=self.params.batch_size, shuffle=True,
-                                 num_workers=self.params.num_workers)
-        test_set = TabularDataset(self.params.val)
-        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
-                                num_workers=self.params.num_workers)
-
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        scaler = GradScaler()
 
         self.model.train()
-        should_stop = False
         for epoch in range(self.params.epochs):
             epoch_loss = 0.0
-            len_trainloader = len(data_loader)
             counter = 1
 
-            with trange(len_trainloader) as t:
+            with trange(len(data_loader)) as t:
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
                     self.optimizer.zero_grad()
@@ -90,25 +77,6 @@ class BaseTrainer(ABC):
                     )
                     t.update()
                     counter += 1
-            if val_loader is not None:
-                val_loss = self.eval(val_loader).item()
-                results = self._eval(test_loader)
-
-                if self.params.early_stopping:
-                    should_stop = self.early_stopper.stop(epoch=epoch,
-                                                          val_loss=val_loss,
-                                                          train_loss=epoch_loss,
-                                                          val_auc=results["proc1p"],
-                                                          test_f1=results["f_score"])
-
-                    print(f'Val loss :{val_loss} | Train loss: {self.eval(data_loader).item()} '
-                          f'| early_stop? {should_stop} | patience:{self.early_stopper.counter}  ')
-                print(results)
-
-                if should_stop:
-                    break
-        if self.params.early_stopping:
-            self.early_stopper.get_best_vl_metrics()
 
         self.after_training()
 
@@ -128,10 +96,9 @@ class BaseTrainer(ABC):
         y_true, scores = [], []
         with torch.no_grad():
             for row in dataset:
-                X, y = row[0], row[1]
+                X = row['data'].to(self.params.device)
+                y = row['target'].to(self.params.device)
                 X = X.to(self.device).float()
-                # if len(X) < self.batch_size:
-                #     break
                 score = self.score(X)
                 y_true.append(y.cpu().numpy())
                 scores.append(score.cpu().numpy())
@@ -147,13 +114,16 @@ class BaseTrainer(ABC):
                 dict(accuracy=accuracy,
                      precision=precision, recall=recall, f_score=f_score, avgpr=avgpr, proc1p=roc).items()}
 
-    def test(self, dataset: DataLoader) -> Union[np.array, np.array]:
+    def test(self, data):
+        test_set = TabularDataset(data)
+        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
+                                 num_workers=self.params.num_workers)
         self.model.eval()
         y_true, scores = [], []
         with torch.no_grad():
-            for row in dataset:
-                X, y = row[0], row[1]
-                X = X.to(self.device).float()
+            for row in test_loader:
+                X = row['data'].to(self.params.device)
+                y = row['target'].to(self.params.device)
                 score = self.score(X)
                 y_true.extend(y.cpu().tolist())
                 scores.extend(score.cpu().tolist())

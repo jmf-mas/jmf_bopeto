@@ -1,7 +1,7 @@
 from sklearn import metrics as sk_metrics
 import torch
 import numpy as np
-from trainer.trainer import *
+from trainer.ae import Trainer
 from synthetic.generation import JMF, FGM
 from sklearn.metrics import precision_recall_fscore_support as prf, accuracy_score
 
@@ -11,12 +11,12 @@ class Utils:
 
     def get_reconstruction_errors(self):
         trainer = Trainer(self.params)
-        errors = trainer.run(True)
+        errors = trainer.train(True)
         return errors
 
     def initial_train(self):
         trainer = Trainer(self.params)
-        errors = trainer.run(False)
+        errors = trainer.train(False)
         return errors
 
     def generate_synthetic_data(self):

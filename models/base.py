@@ -78,15 +78,21 @@ class BaseModel(nn.Module):
             self.load_state_dict(pickle.load(fp))
 
 
-class BaseSKModel(ABC):
+
+class BaseShallowModel(ABC):
 
     def __init__(self, params):
         self.params = params
+        self.resolve_params(params.dataset_name)
 
-    def resolve_params(self):
+    def resolve_params(self, dataset_name: str):
         pass
 
     def reset(self):
+        """
+        This function does nothing.
+        It exists only for consistency with deep models
+        """
         pass
 
     def save(self):

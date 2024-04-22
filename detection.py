@@ -6,7 +6,9 @@ import pandas as pd
 from models.shallow import IF, LOF, OCSVM
 from params import Params
 from trainer.ae import  TrainerAE
-from trainer.shallow import TrainerSK
+from copy import deepcopy
+
+from trainer.base import TrainerBaseShallow
 from trainer.dagmm import TrainerDAGMM
 from trainer.dsebm import TrainerDSEBM
 from trainer.alad import TrainerALAD
@@ -24,22 +26,22 @@ model_trainer_map = {
     "alad": (TrainerALAD, ALAD),
     "dagmm": (TrainerDAGMM, DAGMM),
     "dsebm": (TrainerDSEBM, DSEBM),
-    "if": (TrainerSK, IF),
-    "lof": (TrainerSK, LOF),
-    "ocsvm": (TrainerSK, OCSVM),
+    "if": (TrainerBaseShallow, IF),
+    "lof": (TrainerBaseShallow, LOF),
+    "ocsvm": (TrainerBaseShallow, OCSVM),
     "ae": (TrainerAE, AEDetecting),
     "svdd": (TrainerSVDD, DeepSVDD),
 }
 
-def resolve_model_trainer(p):
-    t, m = model_trainer_map.get(p.model_name, None)
-    assert t, "Model %s not found" % p.model_name
-    m = m(p)
-    m.save()
-    m.load()
-    p.model = m
-    t = t(p)
-    return t
+def resolve_model_trainer(model_name):
+    t, m = model_trainer_map.get(model_name, None)
+    assert t, "Model %s not found" % model_name
+    #m = m(p)
+    #m.save()
+    #m.load()
+    #p.model = m
+    #t = t(p)
+    return t, m
 
 def get_contamination(key, model_name):
     if "bopeto" in key:
@@ -63,7 +65,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
-    parser.add_argument('--name', type=str, default='kdd', help='data set name')
+    parser.add_argument('--name', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
 
     #DaGMM
@@ -219,23 +221,31 @@ if __name__ == "__main__":
     params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
-    tr = resolve_model_trainer(params)
+    tr, mo = resolve_model_trainer(params.model_name)
+    mo = mo(params)
+    params.model = mo
+    tr = tr(params)
+    print("initial",id(mo), id(tr))
     for key in filter_keys:
         print("training on "+key)
-        tr.params.data = data[key]
-        tr.train()
-        if tr.name == "sklearn":
-            y_pred = tr.test(params.test[:, :-1])
-            y_test = params.test[:, -1]
+
+        model = deepcopy(mo)
+        model.params.data = data[key]
+        trainer = deepcopy(tr)
+        trainer.params.data = data[key]
+        trainer.params.model = model
+        trainer.train()
+        if trainer.name == "shallow":
+            X, y_test = params.test[:, :-1], params.test[:, -1]
+            y_pred = trainer.test(X)
             metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
             contamination, model_name_ = get_contamination(key, params.model_name)
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
         else:
-
-            y_val, score_val = tr.test(params.val)
-            y_test, score_test = tr.test(params.test)
+            y_val, score_val = trainer.test(params.val)
+            y_test, score_test = trainer.test(params.test)
             threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
             threshold = threshold["Thresh_star"]
             metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)

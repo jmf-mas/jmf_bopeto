@@ -23,7 +23,7 @@ class BaseTrainer(ABC):
         self.lr = params.learning_rate
         self.weight_decay = params.weight_decay
         self.optimizer = self.set_optimizer()
-        self.name = 'torch'
+        self.name = 'deep'
         self.model = self.params.model
         self.model.to(params.device)
 
@@ -140,8 +140,6 @@ class BaseTrainer(ABC):
             for row in dataset:
                 X, y = row[0], row[1]
                 X = X.to(self.device).float()
-                # if len(X) < self.batch_size:
-                #     break
                 score = self.score(X)
                 y_true.extend(y.cpu().tolist())
                 scores.extend(score.cpu().tolist())
@@ -161,3 +159,25 @@ class BaseTrainer(ABC):
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
 
+class TrainerBaseShallow(ABC):
+    def __init__(self, params):
+        self.params = params
+        self.name = "shallow"
+
+    def train(self):
+        self.params.model.clf.fit(self.params.data[:, :-1])
+
+    def score(self, sample):
+        return self.params.model.clf.predict(sample)
+
+    def test(self, X):
+        score = self.score(X)
+        y_pred = np.where(score == 1, 0, score)
+        return np.where(y_pred == -1, 1, y_pred)
+    def get_params(self) -> dict:
+        return {
+            **self.model.get_params()
+        }
+
+    def predict(self, scores: np.array, thresh: float):
+        return (scores >= thresh).astype(int)

@@ -25,31 +25,30 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     configs = vars(args)
-    metrics = configs['metrics']
-    batch_size = configs['batch_size']
-    lr = configs['learning_rate']
-    wd = configs['weight_decay']
-    nw = configs['num_workers']
-    alpha = configs['alpha']
-    gamma = configs['gamma']
-    epochs = configs['epochs']
-    name = configs['name']
-    metric = 'mac'
-    synthetic = configs['synthetic']
+    params = Params()
+    params.dataset_name = configs['name']
+    params.batch_size = configs['batch_size']
+    params.learning_rate = configs['learning_rate']
+    params.weight_decay = configs['weight_decay']
+    params.num_workers = configs['num_workers']
+    params.alpha = configs['alpha']
+    params.gamma = configs['gamma']
+    params.epochs = configs['epochs']
+    params.synthetic  = configs['synthetic']
+    params.metric = 'sdc'
+    splitter = Splitter(params.dataset_name)
 
-    splitter = Splitter(name)
     data = splitter.split()
-    params = Params(batch_size, lr, wd, nw, alpha, gamma, epochs, name , metric, synthetic)
 
     rates = np.linspace(0, 1, 11)[1:]
     cleaning = []
-    in_dist = data[name + "_train"]
-    n_out = len(data[name + "_contamination"])
+    in_dist = data[params.dataset_name + "_train"]
+    n_out = len(data[params.dataset_name + "_contamination"])
     params.init_model(in_dist.shape[1]-1, load=False)
     utils = Utils(params)
     for rate in rates:
         ind = np.arange(int(rate*n_out))
-        oo_dist = data[name + "_contamination"][ind]
+        oo_dist = data[params.dataset_name + "_contamination"][ind]
         utils.params.data = utils.contaminate(in_dist, oo_dist)
         utils.params.set_model()
         #training
@@ -57,7 +56,7 @@ if __name__ == "__main__":
         _ = utils.initial_train()
         before = contamination(params.data)
         print("before", before)
-        data[name + "_train_contamination_" + str(before[1])] = utils.params.data
+        data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
         print("synthetic data generation")
         N = len(utils.params.data)
         M = int(np.ceil(utils.params.gamma * N))
@@ -74,15 +73,14 @@ if __name__ == "__main__":
         np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
         dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
         utils.params.dynamics = dynamics
-        for metric in metrics:
-            utils.params.update_metric(metric)
-            b = BOPETO(utils.params)
-            indices = b.refine(True)
-            refined_data = utils.params.data[indices]
-            after = contamination(refined_data)
-            print("after with", metric, after)
-            data[name + "_train_bopeto_" +metric+"_"+ str(before[1])] = refined_data
-            cleaning.append([metric, before[0], after[0], before[1], after[1]])
+        utils.params.update_metric(params.metric)
+        b = BOPETO(utils.params)
+        indices = b.refine(True)
+        refined_data = utils.params.data[indices]
+        after = contamination(refined_data)
+        print("after with", params.metric, after)
+        data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = refined_data
+        cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
     name = utils.params.dataset_name+"_"+utils.params.synthetic
     db = pd.DataFrame(data=cleaning, columns=['metric', 'n1', 'n2', 'r1', 'r2'])
     db.to_csv(outputs + name+".csv", index=False)

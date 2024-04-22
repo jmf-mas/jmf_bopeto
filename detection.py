@@ -1,41 +1,32 @@
 import argparse
+from collections import defaultdict
+from random import random
+
 import numpy as np
 import pandas as pd
 import torch
-from models.ae import AE
-from models.dagmm import DaGMM
-from params import ParamsAE, ParamsDaGMM
-from trainer.trainer import TrainerAE, TrainerSK, TrainerDaGMM
+from params import Params
+from trainer.trainer import TrainerAE, TrainerSK, TrainerDAGMM, TrainerALAD, TrainerDSEBM
 from utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
-from sklearn.svm import OneClassSVM
-from sklearn.neighbors import LocalOutlierFactor
-from sklearn.ensemble import IsolationForest
+import os
 
 outputs = "outputs/"
 
+model_trainer_map = {
+    "alad": TrainerALAD,
+    "dagmm": TrainerDAGMM,
+    "dsebm": TrainerDSEBM,
+    "if": TrainerSK,
+    "lof": TrainerSK,
+    "ocsvm": TrainerSK,
+    "ae": TrainerAE,
+}
 
-def get_model(model):
-    if model.upper()=="AE":
-        backup = AE(params.val.shape[1]-1, name, 0.0)
-        model_name = "AE"
-        backup.load()
-    elif model.upper()=="OC-SVM":
-        backup = OneClassSVM(kernel='rbf', nu=0.1)
-        model_name = "OC-SVM"
-    elif model.upper()=="LOF":
-        backup = LocalOutlierFactor(n_neighbors=20, novelty=True)
-        model_name = "LOF"
-    elif model.upper()=="IF":
-        backup = IsolationForest(n_estimators=100, random_state=42)
-        model_name = "IF"
-    else:
-        backup = DaGMM(name, params.val.shape[1]-1, params.gmm_k)
-        if torch.cuda.is_available():
-            backup.cuda()
-        backup.load()
-        model_name = "DAGMM"
-
-    return backup, model_name
+def resolve_model_trainer(p):
+    t = model_trainer_map.get(p.model, None)
+    assert t, "Model %s not found" % p.model
+    t = t(p)
+    return t
 
 def get_contamination(key, model_name):
     if "bopeto" in key:
@@ -70,15 +61,124 @@ if __name__ == "__main__":
     parser.add_argument('--sample_step', type=int, default=194)
     parser.add_argument('--model_save_step', type=int, default=194)
 
+    # Jeff
+    parser.add_argument(
+        '--n-runs',
+        help='number of runs of the experiment',
+        type=int,
+        default=1
+    )
+
+    parser.add_argument(
+        '--lr',
+        type=float,
+        default=0.0001,
+        help="The learning rate"
+    )
+    parser.add_argument(
+        '--test_pct',
+        type=float,
+        default=0.5,
+        help="The percentage of normal data used for training"
+    )
+
+    parser.add_argument(
+        '--patience',
+        type=float,
+        default=10,
+        help='Early stopping patience')
+
+    parser.add_argument(
+        "--pct",
+        type=float,
+        default=1.0,
+        help="Percentage of original data to keep"
+    )
+
+    parser.add_argument(
+        "--val_ratio",
+        type=float,
+        default=0.2,
+        help="Ratio of validation set from the training set"
+    )
+
+    parser.add_argument(
+        "--hold_out",
+        type=float,
+        default=0.0,
+        help="Percentage of anomalous data to holdout for possible contamination of the training set"
+    )
+    parser.add_argument(
+        "--rho",
+        type=float,
+        default=0.0,
+        help="Anomaly ratio within training set"
+    )
+
+    parser.add_argument('--drop_lastbatch', dest='drop_lastbatch', action='store_true')
+    parser.add_argument('--no-drop_lastbatch', dest='drop_lastbatch', action='store_false')
+    parser.set_defaults(drop_lastbatch=False)
+
+    # Robustness parameters
+    parser.add_argument('--rob', dest='rob', action='store_true')
+    parser.add_argument('--no-rob', dest='rob', action='store_false')
+    parser.set_defaults(rob=False)
+
+    parser.add_argument('--rob-sup', dest='rob_sup', action='store_true')
+    parser.add_argument('--no-rob-sup', dest='rob_sup', action='store_false')
+    parser.set_defaults(rob_sup=False)
+
+    parser.add_argument('--rob-reg', dest='rob_reg', action='store_true')
+    parser.add_argument('--no-rob-reg', dest='rob_reg', action='store_false')
+    parser.set_defaults(rob_reg=False)
+
+    parser.add_argument('--eval-test', dest='eval_test', action='store_true')
+    parser.add_argument('--no-eval-test', dest='eval_test', action='store_false')
+    parser.set_defaults(eval_test=False)
+
+    parser.add_argument('--early_stopping', dest='early_stopping', action='store_true')
+    parser.add_argument('--no-early_stopping', dest='early_stopping', action='store_false')
+    parser.set_defaults(early_stopping=True)
+
+    parser.add_argument(
+        '--rob_method',
+        type=str,
+        choices=['refine', 'loe', 'our', 'sup'],
+        default='daecd',
+        help='methods used, either blind, refine, loe, daecd'
+    )
+
+    parser.add_argument(
+        '--alpha-off-set',
+        type=int,
+        default=0.0,
+        help='values between o and 1 used to offset the true value of the contamination ratio'
+    )
+
+    parser.add_argument(
+        '--reg_n',
+        type=float,
+        default=1e-3,
+        help='regulizer factor for the latent representation norm  '
+    )
+
+    parser.add_argument(
+        '--reg_a',
+        type=float,
+        default=1e-3,
+        help='regulizer factor for the anomalies loss'
+    )
+
+    parser.add_argument(
+        '--num_clusters',
+        type=int,
+        default=3,
+        help='number of clusters'
+    )
+
     args = parser.parse_args()
+
     configs = vars(args)
-    batch_size = configs['batch_size']
-    lr = configs['learning_rate']
-    wd = configs['weight_decay']
-    nw = configs['num_workers']
-    alpha = configs['alpha']
-    epochs = configs['epochs']
-    name = configs['name']
 
     gmm_k = configs['gmm_k']
     lambda_energy = configs['lambda_energy']
@@ -87,53 +187,49 @@ if __name__ == "__main__":
     sample_step = configs['sample_step']
     model_save_step = configs['model_save_step']
 
-
-    data = np.load("detection/"+name+".npz", allow_pickle=True)
+    params = Params()
+    params.patience = configs['patience']
+    params.learning_rate = configs['learning_rate']
+    params.weight_decay = configs['weight_decay']
+    params.batch_size = configs['batch_size']
+    params.num_workers = configs['num_workers']
+    params.alpha = configs['alpha']
+    params.epochs = configs['epochs']
+    params.model = configs['model']
+    params.early_stopping = configs['early_stopping']
+    params.dataset_name = configs['name']
+    data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
     keys = list(data.keys())
     filter_keys = list(filter(lambda s: "train" in s, keys))
-    if configs['model']=="DAGMM":
-        params = ParamsDaGMM(batch_size, lr, epochs, nw, gmm_k, lambda_energy, lambda_cov_diag, log_step, sample_step, model_save_step)
-        backup = DaGMM(name, data[name + "_val"].shape[1] - 1, params.gmm_k)
-        if torch.cuda.is_available():
-            backup.cuda()
-        backup.save()
-    else:
-        params = ParamsAE(batch_size, lr, wd, nw, epochs)
-    params.test = data[name+"_test"]
-    params.val = data[name + "_val"]
+    params.test = data[params.dataset_name+"_test"]
+    params.val = data[params.dataset_name + "_val"]
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
     backup = None
     for key in filter_keys:
         print("training on "+key)
-        params.model, model_name = get_model(configs['model'])
         params.data = data[key]
-        if model_name == "AE":
-            trainer = TrainerAE(params)
-            trainer.run()
+        tr = resolve_model_trainer(params)
+        tr.run()
+        tr.test()
+        if tr.name == "sklearn":
+            y_test = params.test[:, -1]
+            metrics = compute_metrics_binary(tr.params.y_pred, y_test, pos_label=1)
+            contamination, model_name_ = get_contamination(key, params.model)
+            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+            performances.loc[len(performances)] = perf
+            print("performance on", key, metrics[:4])
+        else:
             y_val = params.val[:, -1]
             y_test = params.test[:, -1]
-            threshold = estimate_optimal_threshold(trainer.params.val_scores, y_val, pos_label=1, nq=100)
+            threshold = estimate_optimal_threshold(tr.params.val_scores, y_val, pos_label=1, nq=100)
             threshold = threshold["Thresh_star"]
-            metrics = compute_metrics(trainer.params.test_scores, y_test, threshold, pos_label=1)
-
-            contamination, model_name_ = get_contamination(key, model_name)
-            perf = [name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
-        elif model_name == "DAGMM":
-            trainer = TrainerDaGMM(params)
-            trainer.run()
-        else:
-            trainer = TrainerSK(params)
-            trainer.run()
-            y_test = params.test[:, -1]
-            metrics = compute_metrics_binary(trainer.params.y_pred, y_test, pos_label=1)
-            contamination, model_name_ = get_contamination(key, model_name)
-            perf = [name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+            metrics = compute_metrics(tr.params.test_scores, y_test, threshold, pos_label=1)
+            contamination, model_name_ = get_contamination(key, params.model)
+            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
 
-    performances.to_csv("outputs/performances_"+name+"_"+model_name+".csv", header=True, index=False)
+    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model+".csv", header=True, index=False)
 
 
 

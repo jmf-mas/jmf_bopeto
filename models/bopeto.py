@@ -2,7 +2,7 @@ from plot.filtering import plot_segmented_one_line, plot_segmented_two_lines, pl
 import pandas as pd
 from scipy.stats import variation as cv
 from metric.metrics import Metrics
-from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
 import numpy as np
 
 
@@ -15,38 +15,20 @@ class BOPETO:
 
     def refine(self, plot=False):
         std = self.metric()
-
         n = len(std)
-        iclass = ["synthetic" if self.params.dynamics[i, -1] == 2 else "training" for i in range(n)]
-        dbframe = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": iclass})
-        if plot:
-            target = ["in" if self.params.dynamics[i, -1] == 0 else ("out" if self.params.dynamics[i, -1] == 1 else "synthetic") for i in range(n)]
-            db = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": target})
-        values = dbframe[(dbframe["class"] != "synthetic")][self.params.metric].values.reshape(-1, 1)
-        synthetic_values = dbframe[(dbframe["class"] == "synthetic")][self.params.metric].values.reshape(-1, 1)
+        target = ["synthetic" if self.params.dynamics[i, -1] == 2 else "training" for i in range(n)]
+        db = pd.DataFrame(data={'sample': range(n), self.params.metric: std, "class": target})
+        values = db[self.params.metric].values.reshape(-1, 1)
+        detector = IsolationForest(n_estimators=50, random_state=42)
+        y_pred = detector.fit_predict(values)
+        anomaly_scores = detector.decision_function(values)
+        ood = anomaly_scores[y_pred == -1]
+        in_ = anomaly_scores[y_pred == 1]
+        threshold = (np.max(ood) + np.min(in_)) / 2
+        threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])
+        y_pred = anomaly_scores >= threshold
 
-        kappa = np.std(values) /(np.max(values) + 0.0000000001)
-        kappa = np.percentile(synthetic_values, 70)
-        print("kappa", kappa)
-        indices = list(dbframe[(dbframe[self.params.metric] <= kappa) & (dbframe["class"] != "synthetic")].index)
-
-        if kappa < 0.12:
-            # no ood detected
-            indices_ = list(dbframe[dbframe["class"] != "synthetic"].index)
-            thresh = 1.5*np.max(values)
-        else:
-            kmeans = KMeans(n_clusters=2)
-            kmeans.fit(values)
-            centroids = kmeans.cluster_centers_
-            index = np.argmin(centroids)
-            y_predict = kmeans.predict(values)
-            thresh_1 = np.max(values[y_predict==index])
-            thresh_2 = np.min(values[y_predict != index])
-            thresh = (thresh_1 + thresh_2)/2
-            indices_ = list(dbframe[(dbframe[self.params.metric] <= thresh) & (dbframe["class"] != "synthetic")].index)
-        if plot:
-            uid = self.params.dataset_name +"_"+self.params.synthetic+"_"+self.params.metric +"_rate_"+str(self.params.rate)
-            plot_segmented_one_line(uid, db, kappa, self.params.metric)
+        indices = list(db[(y_pred==1) & (db["class"] != "synthetic")].index)
         return indices
 
     def refine_old(self, plot=False):
@@ -67,7 +49,7 @@ class BOPETO:
             indices = list(dbframe[(dbframe["class"] != "synthetic")].index)
             if plot:
                 plot_segmented(self.params.id, db, self.params.metric)
-        elif kappa >= self.params.phi_0 and kappa < self.params.phi_1:
+        elif self.params.phi_0 <= kappa < self.params.phi_1:
             threshold = dbframe[(dbframe["class"] == "synthetic")][self.params.metric].quantile(.2)
             indices = list(dbframe[(dbframe[self.params.metric] < threshold) & (dbframe["class"] != "synthetic")].index)
             if plot:

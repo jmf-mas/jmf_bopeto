@@ -1,37 +1,54 @@
-import os
 import numpy as np
 from models.ae import AE
-from copy import copy
+import torch
+
 
 class Params:
 
-    def __init__(self, rate, batch_size, learning_rate, weight_decay, num_workers, alpha, gamma, epochs, path, metric, synthetic):
-
-        self.rate = rate
+    def __init__(self):
+        self.i = 0
+        self.rate = 0
+        self.patience = 10
         self.id = None
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.weight_decay = weight_decay
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epochs = epochs
-        self.path = path
-        self.dataset_name = os.path.basename(path).split(".")[0]
-        self.metric = metric
-        self.synthetic = synthetic
+        self.batch_size = None
+        self.learning_rate = None
+        self.weight_decay = None
+        self.alpha = None
+        self.gamma = None
+        self.epochs = None
+        self.dataset_name = None
+        self.metric = None
+        self.data = None
+        self.synthetic = None
         self.model = None
-        self.num_workers = num_workers
-        raw = np.load(path, allow_pickle=True)
-        key = list(raw.keys())[0]
-        self.data = raw[key]
+        self.num_workers = None
         self.dynamics = None
         self.fragment = None
+        self.val = None
+        self.test = None
+        self.val_scores = None
+        self.test_scores = None
+        self.y_pred = None
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.lambda_1 = 0.1
+        self.lambda_2 =  0.005
+        self.reg_covar = 0.1
+        self.n_jobs_dataloader = 0
+        self.early_stopping = True
+        self.score_metric = "reconstruction"
 
-    def set_model(self, load=False):
+    def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
-        self.model = AE(self.data.shape[1]-1, self.id, 0.2)
+        self.model = AE(self.data.shape[1]-1, self.dataset_name, 0.2)
+        self.model.load()
+        self.model.name = self.id
+
+    def init_model(self, n, load=False):
+        self.model = AE(n, self.dataset_name, 0.0)
         if load:
             self.model.load()
+        self.model.save()
+
 
     def update_data(self, synthetic):
         y = [2]*len(synthetic)
@@ -44,6 +61,7 @@ class Params:
 
     def update_metric(self, metric):
         self.metric = metric
+
 
 
 

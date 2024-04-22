@@ -2,6 +2,8 @@ import argparse
 
 import numpy as np
 import pandas as pd
+
+from models.shallow import IF, LOF, OCSVM
 from params import Params
 from trainer.ae import  TrainerAE
 from trainer.shallow import TrainerSK
@@ -10,23 +12,32 @@ from trainer.dsebm import TrainerDSEBM
 from trainer.alad import TrainerALAD
 from trainer.svdd import TrainerSVDD
 from utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
+from models.svdd import DeepSVDD
+from models.alad import ALAD
+from models.dsebm import  DSEBM
+from models.ae import AEDetecting
+from models.dagmm import DAGMM
 
 outputs = "outputs/"
 
 model_trainer_map = {
-    "alad": TrainerALAD,
-    "dagmm": TrainerDAGMM,
-    "dsebm": TrainerDSEBM,
-    "if": TrainerSK,
-    "lof": TrainerSK,
-    "ocsvm": TrainerSK,
-    "ae": TrainerAE,
-    "svdd": TrainerSVDD,
+    "alad": (TrainerALAD, ALAD),
+    "dagmm": (TrainerDAGMM, DAGMM),
+    "dsebm": (TrainerDSEBM, DSEBM),
+    "if": (TrainerSK, IF),
+    "lof": (TrainerSK, LOF),
+    "ocsvm": (TrainerSK, OCSVM),
+    "ae": (TrainerAE, AEDetecting),
+    "svdd": (TrainerSVDD, DeepSVDD),
 }
 
 def resolve_model_trainer(p):
-    t = model_trainer_map.get(p.model, None)
-    assert t, "Model %s not found" % p.model
+    t, m = model_trainer_map.get(p.model_name, None)
+    assert t, "Model %s not found" % p.model_name
+    m = m(p)
+    m.save()
+    m.load()
+    p.model = m
     t = t(p)
     return t
 
@@ -197,7 +208,7 @@ if __name__ == "__main__":
     params.num_workers = configs['num_workers']
     params.alpha = configs['alpha']
     params.epochs = configs['epochs']
-    params.model = configs['model']
+    params.model_name = configs['model']
     params.early_stopping = configs['early_stopping']
     params.dataset_name = configs['name']
     data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
@@ -207,32 +218,33 @@ if __name__ == "__main__":
     params.val = data[params.dataset_name + "_val"]
     params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
-    backup = None
+    params.data = data[filter_keys[0]]
+    tr = resolve_model_trainer(params)
     for key in filter_keys:
         print("training on "+key)
-        params.data = data[key]
-        tr = resolve_model_trainer(params)
+        tr.params.data = data[key]
         tr.train()
         if tr.name == "sklearn":
             y_pred = tr.test(params.test[:, :-1])
             y_test = params.test[:, -1]
             metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
-            contamination, model_name_ = get_contamination(key, params.model)
+            contamination, model_name_ = get_contamination(key, params.model_name)
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
         else:
+
             y_val, score_val = tr.test(params.val)
             y_test, score_test = tr.test(params.test)
             threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
             threshold = threshold["Thresh_star"]
             metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
-            contamination, model_name_ = get_contamination(key, params.model)
+            contamination, model_name_ = get_contamination(key, params.model_name)
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
 
-    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model+".csv", header=True, index=False)
+    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
 
 
 

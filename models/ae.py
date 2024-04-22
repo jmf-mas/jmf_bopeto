@@ -5,13 +5,13 @@ import pickle
 
 import torch
 import torch.nn.functional as F
-from .base import BaseModel
+from .base import BaseModel, BaseAEModel
 from typing import Tuple, List
 
-class AECleaning(nn.Module):
+class AECleaning(BaseAEModel):
 
     def __init__(self, in_dim, name, dropout=0):
-        super(AECleaning, self).__init__()
+        super(AECleaning, self).__init__(params)
         if "cifar" in name or "svhn" in name or "mnist" in name:
             self.enc = nn.Sequential(
                 nn.Linear(in_dim, 512),
@@ -70,22 +70,9 @@ class AECleaning(nn.Module):
         l2_norm = sum(p.pow(2.0).sum() for p in self.parameters())
         return l2_lambda * l2_norm
 
-    def save(self):
-        parent_name = "checkpoints"
-        Path(parent_name).mkdir(parents=True, exist_ok=True)
-        with open(parent_name + "/" + self.name + ".pickle", "wb") as fp:
-            pickle.dump(self.state_dict(), fp)
-
-    def load(self):
-        with open("checkpoints/" + self.name + ".pickle", "rb") as fp:
-            self.load_state_dict(pickle.load(fp))
-
-    def load_from(self, file):
-        with open("checkpoints/" + file + ".pickle", "rb") as fp:
-            self.load_state_dict(pickle.load(fp))
 
 
-class AEDetecting(nn.Module):
+class AEDetecting(BaseAEModel):
     """
     Implements a basic Deep Auto Encoder
     """
@@ -95,7 +82,7 @@ class AEDetecting(nn.Module):
         cond = (enc_layers and dec_layers) or (params.dataset_name and params.in_features)
         assert cond, "please provide either the name of the dataset and the number of features or specify the encoder " \
                      "and decoder layers "
-        super(AEDetecting, self).__init__()
+        super(AEDetecting, self).__init__(params)
         if not enc_layers or not dec_layers:
             enc_layers, dec_layers = AEDetecting.resolve_layers(params.in_features,
                                                                 params.dataset_name,
@@ -315,13 +302,13 @@ class AEDetecting(nn.Module):
             m.reset_parameters()
 
     @staticmethod
-    def load(filename):
+    def load_(filename):
         # Load model from file (.pklz)
         with gzip.open(filename, 'rb') as f:
             model = pickle.load(f)
         assert isinstance(model, BaseModel)
         return model
 
-    def save(self, filename):
+    def save_(self, filename):
         torch.save(self.state_dict(), filename)
 

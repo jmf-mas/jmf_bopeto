@@ -1,5 +1,4 @@
 from torch.cuda.amp import GradScaler, autocast
-from models.ae import AEDetecting
 from .base import BaseTrainer
 from .dataset import TabularDataset
 import numpy as np
@@ -62,8 +61,9 @@ class Trainer:
 
 class TrainerAE(BaseTrainer):
     def __init__(self, params):
-        self.model = AEDetecting(params)
-        self.model.to(params.device)
+        self.params = params
+        self.params.model.to(params.device)
+        self.model = self.params.model
         super(TrainerAE, self).__init__(params)
 
     def train_iter(self, X):

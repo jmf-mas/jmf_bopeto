@@ -24,6 +24,8 @@ class BaseTrainer(ABC):
         self.weight_decay = params.weight_decay
         self.optimizer = self.set_optimizer()
         self.name = 'torch'
+        self.model = self.params.model
+        self.model.to(params.device)
 
         patience = params.patience
         self.early_stopper = Patience(patience=patience, use_train_loss=False, model=self.model)

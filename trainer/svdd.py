@@ -13,7 +13,7 @@ class TrainerSVDD(BaseTrainer):
 
     def __init__(self, params):
         self.params = params
-        self.model = DeepSVDD(params)
+        self.model = self.params.model
         self.model.to(params.device)
         super(TrainerSVDD, self).__init__(params)
         self.c = params.c

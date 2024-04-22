@@ -14,8 +14,9 @@ torch.autograd.set_detect_anomaly(True)
 
 class TrainerDSEBM(BaseTrainer):
     def __init__(self, params):
+        self.params = params
         assert params.score_metric == "reconstruction" or params.score_metric == "energy"
-        self.model = DSEBM(params)
+        self.model = self.params.model
         self.model.to(params.device)
         super(TrainerDSEBM, self).__init__(params)
         self.score_metric = params.score_metric

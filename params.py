@@ -20,7 +20,7 @@ class Params:
         self.metric = None
         self.data = None
         self.synthetic = None
-        self.model = None
+        self.model_name = None
         self.num_workers = None
         self.dynamics = None
         self.fragment = None
@@ -41,6 +41,7 @@ class Params:
         self.D = 8
         self.c = .8
         self.R = None
+        self.model = None
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)

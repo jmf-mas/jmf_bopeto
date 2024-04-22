@@ -5,11 +5,6 @@ from torch.autograd import Variable
 from .base import BaseModel
 
 
-# learning_rate = 1e-5
-# batch_size = 50
-# latent_dim = 32
-# init_kernel = tf.contrib.layers.xavier_initializer()
-
 def weights_init_xavier(m):
     # Copied from https://github.com/JohnEfan/PyTorch-ALAD/blob/6e7c4a9e9f327b5b08936376f59af2399d10dc9f/utils/utils.py#L4
     classname = m.__class__.__name__

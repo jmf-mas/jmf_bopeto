@@ -38,6 +38,9 @@ class Params:
         self.score_metric = "reconstruction"
         self.ae_latent_dim = 1
         self.in_features = None
+        self.D = 8
+        self.c = .8
+        self.R = None
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)

@@ -3,15 +3,12 @@ import torch
 
 from abc import ABC, abstractmethod
 from typing import Union
-from sklearn import metrics as sk_metrics
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
 from tqdm import trange
-from torch.cuda.amp import GradScaler, autocast
 
 from metric.metrics import _estimate_threshold_metrics
 from metric.utils import Patience
-from models.alad import ALAD
 from trainer.dataset import TabularDataset
 
 
@@ -57,24 +54,13 @@ class BaseTrainer(ABC):
     def train(self):
         dataset = TabularDataset(self.params.data)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-        val_set = TabularDataset(self.params.val)
-        val_loader = DataLoader(val_set, batch_size=self.params.batch_size, shuffle=True,
-                                 num_workers=self.params.num_workers)
-        test_set = TabularDataset(self.params.val)
-        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
-                                num_workers=self.params.num_workers)
-
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        scaler = GradScaler()
 
         self.model.train()
-        should_stop = False
         for epoch in range(self.params.epochs):
             epoch_loss = 0.0
-            len_trainloader = len(data_loader)
             counter = 1
 
-            with trange(len_trainloader) as t:
+            with trange(len(data_loader)) as t:
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
                     self.optimizer.zero_grad()

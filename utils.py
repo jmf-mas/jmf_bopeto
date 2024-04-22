@@ -1,7 +1,7 @@
 from sklearn import metrics as sk_metrics
 import torch
 import numpy as np
-from trainer.trainer import *
+from trainer.ae import Trainer
 from synthetic.generation import JMF, FGM
 from sklearn.metrics import precision_recall_fscore_support as prf, accuracy_score
 

@@ -1,14 +1,15 @@
 import argparse
-from collections import defaultdict
-from random import random
 
 import numpy as np
 import pandas as pd
-import torch
 from params import Params
-from trainer.trainer import TrainerAE, TrainerSK, TrainerDAGMM, TrainerALAD, TrainerDSEBM
+from trainer.ae import  TrainerAE
+from trainer.shallow import TrainerSK
+from trainer.dagmm import TrainerDAGMM
+from trainer.dsebm import TrainerDSEBM
+from trainer.alad import TrainerALAD
+from trainer.svdd import TrainerSVDD
 from utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
-import os
 
 outputs = "outputs/"
 
@@ -20,6 +21,7 @@ model_trainer_map = {
     "lof": TrainerSK,
     "ocsvm": TrainerSK,
     "ae": TrainerAE,
+    "svdd": TrainerSVDD,
 }
 
 def resolve_model_trainer(p):

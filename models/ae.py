@@ -1,5 +1,4 @@
 import torch.nn as nn
-import pickle
 from pathlib import Path
 import gzip
 import pickle
@@ -8,7 +7,6 @@ import torch
 import torch.nn.functional as F
 from .base import BaseModel
 from typing import Tuple, List
-
 
 class AECleaning(nn.Module):
 

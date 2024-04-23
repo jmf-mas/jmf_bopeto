@@ -16,6 +16,10 @@ from models.alad import ALAD
 from models.dsebm import  DSEBM
 from models.ae import AEDetecting
 from models.dagmm import DAGMM
+import logging
+
+logging.basicConfig(filename='robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 outputs = "outputs/"
 
@@ -33,11 +37,6 @@ model_trainer_map = {
 def resolve_model_trainer(model_name):
     t, m = model_trainer_map.get(model_name, None)
     assert t, "Model %s not found" % model_name
-    #m = m(p)
-    #m.save()
-    #m.load()
-    #p.model = m
-    #t = t(p)
     return t, m
 
 def get_contamination(key, model_name):
@@ -222,37 +221,57 @@ if __name__ == "__main__":
     mo = mo(params)
     params.model = mo
     tr = tr(params)
-    print("initial",id(mo), id(tr))
+    logging.info("OoD detection on {} with {} has started ...".format(params.dataset_name, params.model_name))
     for key in filter_keys:
-        print("training on "+key)
-
-        model = deepcopy(mo)
-        model.params.data = data[key]
-        trainer = deepcopy(tr)
-        trainer.params.data = data[key]
-        trainer.params.model = model
-        trainer.train()
-        if trainer.name == "shallow":
-            X, y_test = params.test[:, :-1], params.test[:, -1]
-            y_pred = trainer.test(X)
-            metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
+        try:
+            print("training on "+key)
+            model = deepcopy(mo)
+            model.params.data = data[key]
+            trainer = deepcopy(tr)
+            trainer.params.data = data[key]
+            trainer.params.model = model
             contamination, model_name_ = get_contamination(key, params.model_name)
-            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
-        else:
-            y_val, score_val = trainer.test(params.val)
-            y_test, score_test = trainer.test(params.test)
-            threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
-            threshold = threshold["Thresh_star"]
-            metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
-            contamination, model_name_ = get_contamination(key, params.model_name)
-            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
+            logging.info("OoD detection on {} with {} and contamination rate {} has started ...".format(params.dataset_name, params.model_name, contamination))
+            trainer.train()
+            if trainer.name == "shallow":
+                X, y_test = params.test[:, :-1], params.test[:, -1]
+                y_pred = trainer.test(X)
+                metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
+                perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+                performances.loc[len(performances)] = perf
+                print("performance on", key, metrics[:4])
+            else:
+                y_val, score_val = trainer.test(params.val)
+                y_test, score_test = trainer.test(params.test)
+                threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
+                threshold = threshold["Thresh_star"]
+                metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
+                perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+                performances.loc[len(performances)] = perf
+                print("performance on", key, metrics[:4])
+            logging.info("OoD detection on {} with {} and contamination rate {} has finished ...".format(params.dataset_name,
+                                                                                               params.model_name,
+                                                                                               contamination))
+        except RuntimeError as e:
+            logging.error(
+                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
+                                                                                               params.model_name,
+                                                                                               contamination, e))
+        except Exception as e:
+            logging.error(
+                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
+                    params.dataset_name,
+                    params.model_name,
+                    contamination, e))
+        finally:
+            logging.error(
+                "OoD detection on {} with {} and contamination rate {} has finished ...".format(
+                    params.dataset_name,
+                    params.model_name,
+                    contamination))
 
     performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
-
+    logging.info("OoD detection on {} with {} has finished ...".format(params.dataset_name, params.model_name))
 
 
 

@@ -6,6 +6,10 @@ from utils.utils import contamination
 import numpy as np
 import pandas as pd
 from trainer.split import Splitter
+import logging
+
+logging.basicConfig(filename='bopeto.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 outputs = "outputs/"
 
@@ -48,45 +52,63 @@ if __name__ == "__main__":
     n_out = len(data[params.dataset_name + "_contamination"])
     params.init_model(load=False)
     utils = Utils(params)
+    logging.info("Bopeto cleaning on {} dataset has started ...".format(params.dataset_name))
     for rate in rates:
-        ind = np.arange(int(rate*n_out))
-        oo_dist = data[params.dataset_name + "_contamination"][ind]
-        utils.params.data = utils.contaminate(in_dist, oo_dist)
-        utils.params.set_model()
-        #training
-        print("initial training")
-        _ = utils.initial_train()
-        before = contamination(params.data)
-        print("before", before)
-        data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
-        print("synthetic data generation")
-        N = len(utils.params.data)
-        M = int(np.ceil(utils.params.gamma * N))
-        utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
-        synthetic = utils.generate_synthetic_data()
-        utils.params.update_data(synthetic)
-        np.savetxt(utils.params.dataset_name + '.csv', utils.params.data, delimiter=',')
-        # filtering
-        y = utils.params.data[:, -1]
-        print("training for dynamics")
-        utils.params.set_model()
-        dynamics = utils.get_reconstruction_errors()
-        utils.params.dynamics = np.column_stack((dynamics, y))
-        np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
-        dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
-        utils.params.dynamics = dynamics
-        utils.params.update_metric(params.metric)
-        b = BOPETO(utils.params)
-        indices = b.refine(True)
-        refined_data = utils.params.data[indices]
-        after = contamination(refined_data)
-        print("after with", params.metric, after)
-        data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = refined_data
-        cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
+        cont = 0
+        try:
+            ind = np.arange(int(rate*n_out))
+            oo_dist = data[params.dataset_name + "_contamination"][ind]
+            utils.params.data = utils.contaminate(in_dist, oo_dist)
+            utils.params.set_model()
+            #training
+            print("initial training")
+            _ = utils.initial_train()
+            before = contamination(params.data)
+            print("before", before)
+            cont = before[1]
+            data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
+            print("synthetic data generation")
+            N = len(utils.params.data)
+            M = int(np.ceil(utils.params.gamma * N))
+            utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
+            synthetic = utils.generate_synthetic_data()
+            utils.params.update_data(synthetic)
+            np.savetxt(utils.params.dataset_name + '.csv', utils.params.data, delimiter=',')
+            # filtering
+            y = utils.params.data[:, -1]
+            print("training for dynamics")
+            utils.params.set_model()
+            dynamics = utils.get_reconstruction_errors()
+            utils.params.dynamics = np.column_stack((dynamics, y))
+            np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
+            dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
+            utils.params.dynamics = dynamics
+            utils.params.update_metric(params.metric)
+            b = BOPETO(utils.params)
+            indices = b.refine(True)
+            refined_data = utils.params.data[indices]
+            after = contamination(refined_data)
+            print("after with", params.metric, after)
+            data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = refined_data
+            cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
+        except RuntimeError as e:
+            logging.error(
+                "Error for Bopeto cleaning on {} and contamination rate {}: {} ...".format(
+                    params.dataset_name, cont, e))
+        except Exception as e:
+            logging.error(
+                "Bopeto cleaning on {} and contamination rate {} unfinished caused by {} ...".format(
+                    params.dataset_name,cont, e))
+        finally:
+            logging.error(
+                "Bopeto cleaning on {} and contamination rate {} has finished ...".format(
+                    params.dataset_name, cont))
+
     name = utils.params.dataset_name+"_"+utils.params.synthetic
     db = pd.DataFrame(data=cleaning, columns=['utils', 'n1', 'n2', 'r1', 'r2'])
     db.to_csv(outputs + name+".csv", index=False)
     np.savez("detection/"+utils.params.dataset_name+".npz", **data)
+    logging.info("Boepto cleaning on {} has finished ...".format(params.dataset_name))
 
 
 

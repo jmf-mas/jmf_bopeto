@@ -19,15 +19,11 @@ Assumes latest version of Anaconda was installed.
 $ conda create --name [ENV_NAME] python=3.8
 $ conda activate [ENV_NAME]
 $ pip install -r requirements.txt
+$ chmod +x main.sh
+$ ./main.sh
 ```
 Replace `[ENV_NAME]` with the name of your environment.
 
-## Usage
-From the root of the project.
-```
-$ conda activate bopeto
-$ python main.py --path data/kdd.npz --synthetic JMF --metric rmac --contamination_rate 0 0.1 0.2 0.3
-```
 
 Our model contains the following parameters:
 - `-m`: selected machine learning model (**required**)

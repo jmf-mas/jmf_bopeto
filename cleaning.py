@@ -1,8 +1,8 @@
 import argparse
-from params import Params
+from utils.params import Params
 from models.bopeto import BOPETO
-from utils import Utils
-from metric.metrics import contamination
+from utils.utils import Utils
+from utils.utils import contamination
 import numpy as np
 import pandas as pd
 from trainer.split import Splitter
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = refined_data
         cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
     name = utils.params.dataset_name+"_"+utils.params.synthetic
-    db = pd.DataFrame(data=cleaning, columns=['metric', 'n1', 'n2', 'r1', 'r2'])
+    db = pd.DataFrame(data=cleaning, columns=['utils', 'n1', 'n2', 'r1', 'r2'])
     db.to_csv(outputs + name+".csv", index=False)
     np.savez("detection/"+utils.params.dataset_name+".npz", **data)
 

@@ -2,7 +2,6 @@ import numpy as np
 from models.ae import AECleaning
 import torch
 
-
 class Params:
 
     def __init__(self):

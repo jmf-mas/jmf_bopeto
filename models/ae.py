@@ -1,7 +1,6 @@
 import torch.nn as nn
 import gzip
 import pickle
-
 import torch
 import torch.nn.functional as F
 from .base import BaseModel, BaseAEModel

@@ -1,19 +1,16 @@
 import argparse
-
 import numpy as np
 import pandas as pd
-
 from models.shallow import IF, LOF, OCSVM
-from params import Params
+from utils.params import Params
 from trainer.ae import  TrainerAE
 from copy import deepcopy
-
 from trainer.base import TrainerBaseShallow
 from trainer.dagmm import TrainerDAGMM
 from trainer.dsebm import TrainerDSEBM
 from trainer.alad import TrainerALAD
 from trainer.svdd import TrainerSVDD
-from utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
+from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
 from models.svdd import DeepSVDD
 from models.alad import ALAD
 from models.dsebm import  DSEBM

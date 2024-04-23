@@ -6,10 +6,8 @@ from typing import Union
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
 from tqdm import trange
-
-from metric.metrics import _estimate_threshold_metrics
-from metric.utils import Patience
 from trainer.dataset import TabularDataset
+from utils.patience import Patience
 
 
 class BaseTrainer(ABC):

@@ -27,6 +27,6 @@ class BOPETO:
         y_pred = anomaly_scores >= threshold
         indices = list(db[(y_pred==1) & (db["class"] != "synthetic")].index)
         if to_plot:
-            plot_segmented_one_line((self.params.id, db, threshold, dynamics_scores))
+            plot_segmented_one_line(self.params.id, db, threshold, dynamics_scores)
         return indices
 

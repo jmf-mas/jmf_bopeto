@@ -2,17 +2,21 @@
 
 datasets=("ciciot" "credit" "ecg" "ids" "kdd" "kitsune")
 models=("ae" "alad" "dagmm" "dsebm" "svdd", "if", "lof", "ocsvm")
+datasets=("nsl")
+models=("ae")
 
 python_file1="cleaning.py"
 python_file2="detection.py"
+name="--name"
+method="--model"
 
 # Define a function to process each dataset and model
 process_dataset_model() {
     dataset="$1"
     model="$2"
     echo "Processing dataset: $dataset with model: $model"
-    python "$python_file1 --name" "$dataset"
-    python "$python_file2 --name" "$dataset --model" "$model"
+    python "$python_file1" "$name" "$dataset"
+    python "$python_file2" "$name" "$dataset" "$method" "$model"
     echo "Finished processing dataset: $dataset with model: $model"
 }
 

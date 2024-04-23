@@ -18,7 +18,7 @@ from models.ae import AEDetecting
 from models.dagmm import DAGMM
 import logging
 
-logging.basicConfig(filename='robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 outputs = "outputs/"
@@ -222,9 +222,10 @@ if __name__ == "__main__":
     params.model = mo
     tr = tr(params)
     logging.info("OoD detection on {} with {} has started ...".format(params.dataset_name, params.model_name))
-    for key in filter_keys:
+    n_cases = len(filter_keys)
+    for i, key in enumerate(filter_keys):
         try:
-            print("training on "+key)
+            print("{}/{}: training on {}".format(i+1, n_cases, key))
             model = deepcopy(mo)
             model.params.data = data[key]
             trainer = deepcopy(tr)

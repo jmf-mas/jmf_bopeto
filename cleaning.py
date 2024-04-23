@@ -8,7 +8,7 @@ import pandas as pd
 from trainer.split import Splitter
 import logging
 
-logging.basicConfig(filename='bopeto.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='logs/bopeto.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 outputs = "outputs/"

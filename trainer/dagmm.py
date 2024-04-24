@@ -1,4 +1,4 @@
-from models.dagmm import DAGMM
+
 from .base import BaseTrainer
 from .dataset import TabularDataset
 import numpy as np
@@ -10,7 +10,7 @@ torch.autograd.set_detect_anomaly(True)
 class TrainerDAGMM(BaseTrainer):
     def __init__(self, params) -> None:
         self.params = params
-        self.model = DAGMM(params)
+        self.model = self.params.model
         self.model.to(params.device)
         super(TrainerDAGMM, self).__init__(params)
         self.lamb_1 = params.lambda_1

@@ -15,7 +15,7 @@ class TrainerALAD(BaseTrainer):
         self.params = params
         self.criterion = nn.BCEWithLogitsLoss()
         self.optim_ge, self.optim_d = None, None
-        self.model = ALAD(params)
+        self.model = self.params.model
         self.model.to(params.device)
         super(TrainerALAD, self).__init__(params)
 

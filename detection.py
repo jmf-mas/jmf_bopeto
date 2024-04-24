@@ -1,34 +1,43 @@
 import argparse
-
 import numpy as np
 import pandas as pd
-from params import Params
+from models.shallow import IF, LOF, OCSVM
+from utils.params import Params
 from trainer.ae import  TrainerAE
-from trainer.shallow import TrainerSK
+from copy import deepcopy
+from trainer.base import TrainerBaseShallow
 from trainer.dagmm import TrainerDAGMM
 from trainer.dsebm import TrainerDSEBM
 from trainer.alad import TrainerALAD
 from trainer.svdd import TrainerSVDD
-from utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
+from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
+from models.svdd import DeepSVDD
+from models.alad import ALAD
+from models.dsebm import  DSEBM
+from models.ae import AEDetecting
+from models.dagmm import DAGMM
+import logging
+
+logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 outputs = "outputs/"
 
 model_trainer_map = {
-    "alad": TrainerALAD,
-    "dagmm": TrainerDAGMM,
-    "dsebm": TrainerDSEBM,
-    "if": TrainerSK,
-    "lof": TrainerSK,
-    "ocsvm": TrainerSK,
-    "ae": TrainerAE,
-    "svdd": TrainerSVDD,
+    "alad": (TrainerALAD, ALAD),
+    "dagmm": (TrainerDAGMM, DAGMM),
+    "dsebm": (TrainerDSEBM, DSEBM),
+    "if": (TrainerBaseShallow, IF),
+    "lof": (TrainerBaseShallow, LOF),
+    "ocsvm": (TrainerBaseShallow, OCSVM),
+    "ae": (TrainerAE, AEDetecting),
+    "svdd": (TrainerSVDD, DeepSVDD),
 }
 
-def resolve_model_trainer(p):
-    t = model_trainer_map.get(p.model, None)
-    assert t, "Model %s not found" % p.model
-    t = t(p)
-    return t
+def resolve_model_trainer(model_name):
+    t, m = model_trainer_map.get(model_name, None)
+    assert t, "Model %s not found" % model_name
+    return t, m
 
 def get_contamination(key, model_name):
     if "bopeto" in key:
@@ -52,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
-    parser.add_argument('--name', type=str, default='kdd', help='data set name')
+    parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
 
     #DaGMM
@@ -197,9 +206,9 @@ if __name__ == "__main__":
     params.num_workers = configs['num_workers']
     params.alpha = configs['alpha']
     params.epochs = configs['epochs']
-    params.model = configs['model']
+    params.model_name = configs['model']
     params.early_stopping = configs['early_stopping']
-    params.dataset_name = configs['name']
+    params.dataset_name = configs['dataset']
     data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
     keys = list(data.keys())
     filter_keys = list(filter(lambda s: "train" in s, keys))
@@ -207,33 +216,52 @@ if __name__ == "__main__":
     params.val = data[params.dataset_name + "_val"]
     params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
-    backup = None
-    for key in filter_keys:
-        print("training on "+key)
-        params.data = data[key]
-        tr = resolve_model_trainer(params)
-        tr.train()
-        if tr.name == "sklearn":
-            y_pred = tr.test(params.test[:, :-1])
-            y_test = params.test[:, -1]
-            metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
-            contamination, model_name_ = get_contamination(key, params.model)
-            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
-        else:
-            y_val, score_val = tr.test(params.val)
-            y_test, score_test = tr.test(params.test)
-            threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
-            threshold = threshold["Thresh_star"]
-            metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
-            contamination, model_name_ = get_contamination(key, params.model)
-            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
+    params.data = data[filter_keys[0]]
+    tr, mo = resolve_model_trainer(params.model_name)
+    mo = mo(params)
+    params.model = mo
+    tr = tr(params)
+    n_cases = len(filter_keys)
+    for i, key in enumerate(filter_keys):
+        try:
+            print("{}/{}: training on {}".format(i+1, n_cases, key))
+            model = deepcopy(mo)
+            model.params.data = data[key]
+            trainer = deepcopy(tr)
+            trainer.params.data = data[key]
+            trainer.params.model = model
+            contamination, model_name_ = get_contamination(key, params.model_name)
+            trainer.train()
+        except RuntimeError as e:
+            logging.error(
+                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
+                                                                                               params.model_name,
+                                                                                               contamination, e))
+        except Exception as e:
+            logging.error(
+                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
+                    params.dataset_name,
+                    params.model_name,
+                    contamination, e))
+        finally:
+            if trainer.name == "shallow":
+                X, y_test = params.test[:, :-1], params.test[:, -1]
+                y_pred = trainer.test(X)
+                metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
+                perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+                performances.loc[len(performances)] = perf
+                print("performance on", key, metrics[:4])
+            else:
+                y_val, score_val = trainer.test(params.val)
+                y_test, score_test = trainer.test(params.test)
+                threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
+                threshold = threshold["Thresh_star"]
+                metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
+                perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+                performances.loc[len(performances)] = perf
+                print("performance on", key, metrics[:4])
 
-    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model+".csv", header=True, index=False)
-
+    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
 
 
 

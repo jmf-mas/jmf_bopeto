@@ -1,8 +1,28 @@
 import gzip
 import pickle
+from pathlib import Path
+
 import torch
 from abc import abstractmethod, ABC
 from torch import nn
+import joblib
+
+class BaseAEModel(nn.Module):
+
+    def __init__(self, params):
+        super(BaseAEModel, self).__init__()
+        self.params = params
+
+    def save(self):
+        parent_name = "checkpoints"
+        Path(parent_name).mkdir(parents=True, exist_ok=True)
+        with open(parent_name + "/" + self.params.model_name+ "_"+self.params.dataset_name + ".pickle", "wb") as fp:
+            pickle.dump(self.state_dict(), fp)
+
+    def load(self):
+        with open("checkpoints/" + self.params.model_name+ "_"+self.params.dataset_name  + ".pickle", "rb") as fp:
+            self.load_state_dict(pickle.load(fp))
+
 
 class BaseModel(nn.Module):
 
@@ -13,6 +33,7 @@ class BaseModel(nn.Module):
         self.n_instances, self.in_features = params.data.shape
         self.in_features -=1
         self.resolve_params()
+        self.params = params
 
     def get_params(self) -> dict:
         return {
@@ -39,24 +60,43 @@ class BaseModel(nn.Module):
     def resolve_params(self):
         pass
 
-    def save(self, filename):
+    def save_(self, filename):
         torch.save(self.state_dict(), filename)
+
+    def save(self):
+        parent_name = "checkpoints"
+        Path(parent_name).mkdir(parents=True, exist_ok=True)
+        with open(parent_name + "/" + self.params.model_name+ "_"+self.params.dataset_name + ".pickle", "wb") as fp:
+            pickle.dump(self.state_dict(), fp)
+
+    def load(self):
+        with open("checkpoints/" + self.params.model_name+ "_"+self.params.dataset_name  + ".pickle", "rb") as fp:
+            self.load_state_dict(pickle.load(fp))
+
+    def load_from(self, file):
+        with open("checkpoints/" + file + ".pickle", "rb") as fp:
+            self.load_state_dict(pickle.load(fp))
+
 
 
 class BaseShallowModel(ABC):
 
-    def __init__(self, dataset_name: str, in_features: int, n_instances: int, device: str):
-        self.dataset_name = dataset_name
-        self.device = device
-        self.in_features = in_features
-        self.n_instances = n_instances
-        self.resolve_params()
+    def __init__(self, params):
+        self.params = params
+        self.resolve_params(params.dataset_name)
 
-    def resolve_params(self):
+    def resolve_params(self, dataset_name: str):
         pass
 
     def reset(self):
+        """
+        This function does nothing.
+        It exists only for consistency with deep models
+        """
         pass
 
-    def save(self, filename):
-        pass
+    def save(self):
+        joblib.dump(self.params.model, self.params.model_name+"_"+self.params.dataset_name+".pkl")
+
+    def load(self):
+        self.params.model = joblib.load(self.params.model_name+"_"+self.params.dataset_name+".pkl")

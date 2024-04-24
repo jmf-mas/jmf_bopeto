@@ -1,9 +1,12 @@
 # Unsupervised data cleaning
 This repository collects different unsupervised machine learning algorithms to detect anomalies.
 ## Implemented models
-We have implemented the following models. Our implementations of ALAD, DeepSVDD, 
-DROCC and MemAE closely follows the original implementations already available on GitHub.
-- [x] [AutoEncoder]()
+We have implemented the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
+- [x] [AE]()
+- [x] [ALAD]()
+- [x] [DSEBM]()
+- [x] [DAGMM]()
+- [x] [DeepSVDD]()
 
 ## Dependencies
 A complete dependency list is available in requirements.txt.
@@ -12,9 +15,9 @@ We list here the most important ones:
 - numpy
 - pandas
 - scikit-learn
+- seaborn
 
 ## Installation
-Assumes latest version of Anaconda was installed.
 ```
 $ conda create --name [ENV_NAME] python=3.8
 $ conda activate [ENV_NAME]

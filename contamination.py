@@ -10,7 +10,8 @@ from trainer.neutralad import TrainerNeuTraLAD
 from utils.params import Params
 from copy import deepcopy
 from trainer.base import TrainerBaseShallow
-from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary
+from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary, resolve_model_trainer, \
+    get_contamination
 import logging
 
 logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,24 +25,6 @@ model_trainer_map = {
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
 }
-
-def resolve_model_trainer(model_name):
-    t, m = model_trainer_map.get(model_name, None)
-    assert t, "Model %s not found" % model_name
-    return t, m
-
-def get_contamination(key, model_name):
-    if "bopeto" in key:
-        model_name_ = "Bopeto_" + model_name
-    else:
-        model_name_ = model_name
-
-    contamination = 0
-    splits = key.split("_")
-    if len(splits) >= 3:
-        cont = splits[-1]
-        contamination = float("." + cont.split(".")[1])
-    return contamination, model_name_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OoD detection",
@@ -208,7 +191,7 @@ if __name__ == "__main__":
     params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "true_contamination", "contamination", "model", "accuracy","precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
-    tr, mo = resolve_model_trainer(params.model_name)
+    tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
     mo = mo(params)
     params.model = mo
     tr = tr(params)

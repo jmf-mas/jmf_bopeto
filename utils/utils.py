@@ -94,6 +94,22 @@ def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
         "Thresh_star": thresholds[arm],
         "Quantile_star": qis[arm]
     }
+
+def resolve_model_trainer(model_trainer_map, model_name):
+    t, m = model_trainer_map.get(model_name, None)
+    assert t, "Model %s not found" % model_name
+    return t, m
+
+def get_contamination(key, model_name):
+    if "bopeto" in key:
+        model_name_ = "Bopeto_" + model_name
+    else:
+        model_name_ = model_name
+    cont = 0
+    splits = key.split("_")
+    if len(splits) >= 3:
+        cont = float("." + splits[-1].split(".")[1])
+    return cont, model_name_
 def contamination(data):
     in_dist = len(data[data[:, -1] == 0])
     oo_dist = len(data[data[:, -1] == 1])

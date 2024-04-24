@@ -29,6 +29,9 @@ class Params:
         self.test_scores = None
         self.y_pred = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = None
+        self.dropout = 0
+        # dagmm
         self.lambda_1 = 0.005
         self.lambda_2 =  0.1
         self.reg_covar = 0.01 #1e-12
@@ -40,8 +43,17 @@ class Params:
         self.D = 8
         self.c = .8
         self.R = None
-        self.model = None
-        self.dropout = 0
+        # duad
+        self.r = 10
+        self.p0 = .35
+        self.p = .30
+        self.num_cluster = 20
+        self.contamination_rate = 'auto'
+        self.true_contamination_rate = .0
+        # neuralad
+        self.n_layers = 3
+        self.trans_type = 'res'
+        self.temperature = 0.07
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)

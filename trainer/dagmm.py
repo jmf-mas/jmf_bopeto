@@ -66,7 +66,6 @@ class TrainerDAGMM(BaseTrainer):
 
     def compute_params(self, z: torch.Tensor, gamma: torch.Tensor):
         N = z.shape[0]
-        # K
         gamma_sum = torch.sum(gamma, dim=0)
         phi = gamma_sum / N
 
@@ -87,15 +86,11 @@ class TrainerDAGMM(BaseTrainer):
         if cov_mat is None:
             cov_mat = self.cov_mat
 
-        # Avoid non-invertible covariance matrix by adding small values (eps)
         d = z.shape[1]
         cov_mat = cov_mat + (torch.eye(d)).to(self.device) * eps
-        # N x K x D
         mu_z = z.unsqueeze(1) - mu.unsqueeze(0)
 
-        # scaler
         inv_cov_mat = torch.cholesky_inverse(torch.linalg.cholesky(cov_mat))
-        # inv_cov_mat = torch.linalg.inv(cov_mat)
         det_cov_mat = torch.linalg.cholesky(2 * np.pi * cov_mat)
         det_cov_mat = torch.diagonal(det_cov_mat, dim1=1, dim2=2)
         det_cov_mat = torch.prod(det_cov_mat, dim=1)
@@ -104,8 +99,6 @@ class TrainerDAGMM(BaseTrainer):
         exp_term = torch.matmul(exp_term, mu_z.unsqueeze(-1))
         exp_term = - 0.5 * exp_term.squeeze()
 
-        # Applying log-sum-exp stability trick
-        # https://www.xarg.org/2016/06/the-log-sum-exp-trick-in-machine-learning/
         if exp_term.ndim == 1:
             exp_term = exp_term.unsqueeze(0)
         max_val = torch.max(exp_term.clamp(min=0), dim=1, keepdim=True)[0]

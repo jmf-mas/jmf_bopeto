@@ -8,7 +8,7 @@ class IF(BaseShallowModel):
 
     def __init__(self, params):
         super(IF, self).__init__(params)
-        self.clf = IsolationForest(n_estimators=50)
+        self.clf = IsolationForest(n_estimators=50, contamination = params.contamination_rate)
         self.name = "IF"
 
     def get_params(self) -> dict:
@@ -40,11 +40,7 @@ class OCSVM(BaseShallowModel):
 class LOF(BaseShallowModel):
     def __init__(self, params):
         super(LOF, self).__init__(params)
-        self.clf = LocalOutlierFactor(
-            n_neighbors=20,
-            novelty=True,
-            n_jobs=-1
-        )
+        self.clf = LocalOutlierFactor(contamination = params.contamination_rate, n_neighbors=20, n_jobs=-1)
         self.name = "LOF"
 
     def get_params(self) -> dict:

@@ -50,6 +50,9 @@ class Params:
         self.num_cluster = 20
         self.contamination_rate = 'auto'
         self.true_contamination_rate = .0
+        self.drop_lastbatch = False
+        self.validation = 0.
+        self.seed = 0
         # neuralad
         self.n_layers = 3
         self.trans_type = 'res'

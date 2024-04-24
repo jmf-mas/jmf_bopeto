@@ -25,8 +25,10 @@ class TrainerDUAD:
         self.n_epochs = params.epochs
         self.device = params.device
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr,weight_decay=params.weight_decay)
-
         self.criterion = nn.MSELoss()
+
+        self.dm = DataManager(params)
+
 
     def re_evaluation(self, X, p, num_clusters=20):
         gmm = GaussianMixture(n_components=num_clusters, max_iter=400)
@@ -53,9 +55,7 @@ class TrainerDUAD:
         return indices_selection
 
     def train(self):
-        dataset = TabularDataset(self.params.data)
-        data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
-                                 num_workers=self.params.num_workers)
+
 
         mean_loss = np.inf
         self.dm.update_train_set(self.dm.get_selected_indices())
@@ -154,35 +154,28 @@ class TrainerDUAD:
 
         return loss.item()
 
-    def evaluate_on_test_set(self, pos_label=1, **kwargs):
-        energy_threshold = kwargs.get('threshold', 80)
-        test_loader = self.dm.get_test_set()
+    def test(self, data):
         self.model.eval()
-        train_score = []
+        test_set = TabularDataset(data)
+        test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
+                                 num_workers=self.params.num_workers)
 
         with torch.no_grad():
-            test_score = []
-            test_labels = []
-            test_z = []
+            scores = []
+            y_true = []
 
-            for data in test_loader:
-                test_inputs, label_inputs = data[0].float().to(self.device), data[1]
-                code, X_prime, h_x = self.model(test_inputs)
+            for row in test_loader:
+                X = row['data'].to(self.params.device)
+                y = row['target'].to(self.params.device)
+                code, X_prime, h_x = self.model(X)
 
-                test_score.append(((test_inputs - X_prime) ** 2).sum(axis=-1).squeeze().cpu().numpy())
-                test_z.append(code.cpu().numpy())
-                test_labels.append(label_inputs.numpy())
+                scores.append(((X - X_prime) ** 2).sum(axis=-1).squeeze().cpu().numpy())
+                y_true.append(y.cpu().numpy())
 
-            test_score = np.concatenate(test_score, axis=0)
-            test_z = np.concatenate(test_z, axis=0)
-            test_labels = np.concatenate(test_labels, axis=0)
+            scores = np.concatenate(scores, axis=0)
+            y_true = np.concatenate(y_true, axis=0)
 
-            self.model.train()
-
-            return test_score, test_labels
-
-    def setDataManager(self, dm):
-        self.dm = dm
+            return y_true, scores
 
 class MySubset(Subset):
 
@@ -193,44 +186,37 @@ class MySubset(Subset):
 
 class DataManager:
 
-    def __init__(self, train_dataset: torch.utils.data.Dataset,
-                 test_dataset: torch.utils.data.Dataset,
-                 batch_size: int,
-                 num_classes: int = None,
-                 input_shape: tuple = None,
-                 validation: float = 0.,
-                 seed: int = 0,
-                 **kwargs):
+    def __init__(self, params):
 
-        self.batch_size = batch_size
-        self.num_classes = num_classes
-        self.input_shape = input_shape
-        self.train_set = train_dataset
-        self.test_set = test_dataset
-        self.anomaly_ratio = sum(test_dataset.dataset.y == 1)/len(test_dataset)
-        self.validation = validation
-        self.kwargs = kwargs
-        self.seed = seed
+        self.params = params
+        training_data = TabularDataset(self.params.data)
+        self.train_set = DataLoader(training_data, batch_size=self.params.batch_size, shuffle=True,
+                                  num_workers=self.params.num_workers)
+        val_data = TabularDataset(self.params.val)
+        self.test_set = DataLoader(val_data, batch_size=self.params.batch_size, shuffle=True,
+                                num_workers=self.params.num_workers)
 
-        # torch.manual_seed(seed)
-        n = len(train_dataset)
+        self.batch_size = params.batch_size
+        self.num_classes = params.num_cluster
+        self.input_shape = (params.data.shape[0], self.input_shape)
+        self.anomaly_ratio = params.contamination_rate
+        self.validation = params.validation
+        self.seed = params.seed
+        n = len(self.train_set)
         shuffled_idx = torch.randperm(n).long()
 
-        # Create a mask to track selection process
         self.train_selection_mask = torch.ones_like(shuffled_idx)
 
-        self.current_train_set = MySubset(train_dataset, self.train_selection_mask.nonzero().squeeze())
+        self.current_train_set = MySubset(self.train_set, self.train_selection_mask.nonzero().squeeze())
 
-        # Create the loaders
         train_sampler, val_sampler = self.train_validation_split(
             len(self.train_set), self.validation, self.seed
         )
 
-        self.init_train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler,
-                                            **self.kwargs)
-        self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler, **self.kwargs)
-        self.validation_loader = DataLoader(self.train_set, self.batch_size, sampler=val_sampler, **self.kwargs)
-        self.test_loader = DataLoader(test_dataset, batch_size, shuffle=True, **kwargs)
+        self.init_train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
+        self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
+        self.validation_loader = DataLoader(self.train_set, self.batch_size, sampler=val_sampler)
+        self.test_loader = DataLoader(self.test_set, params.batch_size, shuffle=True)
 
     def get_current_training_set(self):
         return self.current_train_set
@@ -248,12 +234,12 @@ class DataManager:
         self.current_train_set = MySubset(self.train_set, lbl_sample_idx)
         train_sampler, val_sampler = self.train_validation_split(len(self.current_train_set), self.validation,
                                                                  self.seed)
-        self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler, **self.kwargs)
-        self.validation_loader = DataLoader(self.current_train_set, self.batch_size, sampler=val_sampler, **self.kwargs)
+        self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
+        self.validation_loader = DataLoader(self.current_train_set, self.batch_size, sampler=val_sampler)
         return self.train_loader, self.validation_loader
 
     @staticmethod
-    def train_validation_split(num_samples, validation_ratio, seed=0):
+    def train_validation_split(num_samples, validation_ratio):
         # torch.manual_seed(seed)
         num_val = int(num_samples * validation_ratio)
         shuffled_idx = torch.randperm(num_samples).long()

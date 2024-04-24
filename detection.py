@@ -61,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
-    parser.add_argument('--name', type=str, default='nsl', help='data set name')
+    parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
 
     #DaGMM
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     params.epochs = configs['epochs']
     params.model_name = configs['model']
     params.early_stopping = configs['early_stopping']
-    params.dataset_name = configs['name']
+    params.dataset_name = configs['dataset']
     data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
     keys = list(data.keys())
     filter_keys = list(filter(lambda s: "train" in s, keys))
@@ -221,7 +221,6 @@ if __name__ == "__main__":
     mo = mo(params)
     params.model = mo
     tr = tr(params)
-    logging.info("OoD detection on {} with {} has started ...".format(params.dataset_name, params.model_name))
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         try:
@@ -232,8 +231,19 @@ if __name__ == "__main__":
             trainer.params.data = data[key]
             trainer.params.model = model
             contamination, model_name_ = get_contamination(key, params.model_name)
-            logging.info("OoD detection on {} with {} and contamination rate {} has started ...".format(params.dataset_name, params.model_name, contamination))
             trainer.train()
+        except RuntimeError as e:
+            logging.error(
+                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
+                                                                                               params.model_name,
+                                                                                               contamination, e))
+        except Exception as e:
+            logging.error(
+                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
+                    params.dataset_name,
+                    params.model_name,
+                    contamination, e))
+        finally:
             if trainer.name == "shallow":
                 X, y_test = params.test[:, :-1], params.test[:, -1]
                 y_pred = trainer.test(X)
@@ -250,29 +260,8 @@ if __name__ == "__main__":
                 perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
                 performances.loc[len(performances)] = perf
                 print("performance on", key, metrics[:4])
-            logging.info("OoD detection on {} with {} and contamination rate {} has finished ...".format(params.dataset_name,
-                                                                                               params.model_name,
-                                                                                               contamination))
-        except RuntimeError as e:
-            logging.error(
-                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
-                                                                                               params.model_name,
-                                                                                               contamination, e))
-        except Exception as e:
-            logging.error(
-                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
-                    params.dataset_name,
-                    params.model_name,
-                    contamination, e))
-        finally:
-            logging.error(
-                "OoD detection on {} with {} and contamination rate {} has finished ...".format(
-                    params.dataset_name,
-                    params.model_name,
-                    contamination))
 
     performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
-    logging.info("OoD detection on {} with {} has finished ...".format(params.dataset_name, params.model_name))
 
 
 

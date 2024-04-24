@@ -7,13 +7,13 @@ models=("ae")
 process_dataset_model() {
     cleaning="cleaning.py"
     detection="detection.py"
-    name="--name"
-    method="--model"
+    dataset_name="--dataset"
+    model_name="--model"
     dataset="$1"
     model="$2"
     echo "Processing dataset: $dataset with model: $model"
-    python "$cleaning" "$name" "$dataset"
-    python "$detection" "$name" "$dataset" "$method" "$model"
+    python "$cleaning" "$dataset_name" "$dataset"
+    python "$detection" "$dataset_name" "$dataset" "$model_name" "$model"
     echo "Finished processing dataset: $dataset with model: $model"
 }
 

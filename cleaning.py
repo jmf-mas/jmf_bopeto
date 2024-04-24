@@ -24,13 +24,13 @@ if __name__ == "__main__":
     parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.1)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=10)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
-    parser.add_argument('--name', type=str, default='kdd', help='data set name')
+    parser.add_argument('--dataset', type=str, default='kdd', help='data set name')
     parser.add_argument('--synthetic', type=str, default='FGM', help='path to data sets to use')
 
     args = parser.parse_args()
     configs = vars(args)
     params = Params()
-    params.dataset_name = configs['name']
+    params.dataset_name = configs['dataset']
     params.batch_size = configs['batch_size']
     params.learning_rate = configs['learning_rate']
     params.weight_decay = configs['weight_decay']

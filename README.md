@@ -4,11 +4,13 @@ This repository implements Bopeto method and collects different unsupervised mac
 For OoD detection we have used the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
 - [x] [AE]()
 - [x] [ALAD]()
-- [x] [DSEBM]()
 - [x] [DAGMM]()
 - [x] [DeepSVDD]()
+- [x] [DSEBM]()
+- [x] [DUAD]()
 - [x] [IsolationForest]()
 - [x] [LocalOutlierFactor]()
+- [x] [NeuTrALAD]()
 - [x] [One-class SVM]()
 
 ## Dependencies

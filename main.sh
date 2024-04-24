@@ -20,4 +20,4 @@ process_dataset_model() {
 export -f process_dataset_model
 
 parallel -j "$(nproc)" process_dataset_model ::: "${datasets[@]}" ::: "${models[@]}"
-echo "All datasets and models processed successfully"
+echo "Cleaning and OoD detection processed successfully"

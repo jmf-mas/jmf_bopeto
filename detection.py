@@ -215,18 +215,7 @@ if __name__ == "__main__":
             trainer.params.model = model
             contamination, model_name_ = get_contamination(key, params.model_name)
             trainer.train()
-        except RuntimeError as e:
-            logging.error(
-                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
-                                                                                               params.model_name,
-                                                                                               contamination, e))
-        except Exception as e:
-            logging.error(
-                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
-                    params.dataset_name,
-                    params.model_name,
-                    contamination, e))
-        finally:
+
             if trainer.name == "shallow":
                 X, y_test = params.test[:, :-1], params.test[:, -1]
                 y_pred = trainer.test(X)
@@ -241,6 +230,17 @@ if __name__ == "__main__":
             perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
             performances.loc[len(performances)] = perf
             print("performance on", key, metrics[:4])
+        except RuntimeError as e:
+            logging.error(
+                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
+                                                                                               params.model_name,
+                                                                                               contamination, e))
+        except Exception as e:
+            logging.error(
+                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
+                    params.dataset_name,
+                    params.model_name,
+                    contamination, e))
 
     performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
 

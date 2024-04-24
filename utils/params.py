@@ -54,6 +54,10 @@ class Params:
         self.n_layers = 3
         self.trans_type = 'res'
         self.temperature = 0.07
+        self.rob = None
+        self.warmup = 0.1
+        self.rob_method = "loe"
+        self.label = None
 
     def set_model(self):
         self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)

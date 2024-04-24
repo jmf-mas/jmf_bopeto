@@ -1,12 +1,14 @@
 import torch
 from torch import nn, optim
 from torch.optim.lr_scheduler import StepLR
-from .bopeto_base import BopetoBaseTrainer as BaseTrainer
+from trainer.base import BaseTrainer
+
 
 class TrainerNeuTraLAD(BaseTrainer):
 
-    def __init__(self, **kwargs):
-        super(TrainerNeuTraLAD, self).__init__(**kwargs)
+    def __init__(self, params):
+        self.params = params
+        super(TrainerNeuTraLAD, self).__init__(params)
         self.metric_hist = []
 
         mask_params = list()
@@ -22,13 +24,13 @@ class TrainerNeuTraLAD(BaseTrainer):
         loss_n, loss_a = self.model(sample)
         return loss_n
 
-    def train_iter(self, X, **kwargs):
-        alpha = kwargs['contamination_rate']
-        y = kwargs['label']
-        loss_n, loss_a = self.model(X)
+    def train_iter(self, sample):
+        alpha = self.params.contamination_rate
+        y = self.params.label
+        loss_n, loss_a = self.model(sample)
         loss = loss_n.mean()
-        if self.kwargs['rob'] and self.kwargs["warmup"] < 1 + kwargs["epoch"]:
-            if self.kwargs["rob_method"] == 'loe':
+        if self.params.rob and self.params.warmup < 1 + self.params.epochs:
+            if self.params.rob_method == 'loe':
                 score = loss_n - loss_a
                 _, idx_n = torch.topk(score, int(score.shape[0] * (1 - alpha)), largest=False,
                                       sorted=False)
@@ -36,7 +38,7 @@ class TrainerNeuTraLAD(BaseTrainer):
                                       sorted=False)
                 loss = torch.cat([loss_n[idx_n], 0.5 * loss_n[idx_a] + 0.5 * loss_a[idx_a]], 0)
                 loss = loss.mean()
-            elif self.kwargs["rob_method"] == 'sup':
+            elif self.params.rob_method == 'sup':
                 idx_n = torch.nonzero(y == 0, as_tuple=True)
                 idx_a = torch.nonzero(y == 1, as_tuple=True)
                 loss = torch.cat([loss_n[idx_n], loss_a[idx_a]], dim=0)

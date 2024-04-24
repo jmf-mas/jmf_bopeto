@@ -200,28 +200,17 @@ if __name__ == "__main__":
         contamination, model_name_ = get_contamination(key, params.model_name)
         model.params.true_contamination_rate = contamination
         mis_contamination = [contamination/4, contamination/2, contamination, 5*contamination/4, 3*contamination/2]
+        n_mis = len(mis_contamination)
         for j, mis_cont in enumerate(mis_contamination):
             model.params.contamination_rate = mis_cont
             try:
-                print("{}/{}: training on {}".format(i+1, 5*n_cases, key))
+                print("{}/{}: training on {}".format(i * n_mis + j, n_mis*n_cases, key))
                 model = deepcopy(mo)
                 model.params.data = data[key]
                 trainer = deepcopy(tr)
                 trainer.params.data = data[key]
                 trainer.params.model = model
                 trainer.train()
-            except RuntimeError as e:
-                logging.error(
-                    "OoD detection on {} with {} and contamination rate {} wrongly reported as {}  unfinished caused by {} ...".format(params.dataset_name,
-                                                                                                   params.model_name,
-                                                                                                   contamination, mis_cont, e))
-            except Exception as e:
-                logging.error(
-                    "Error for OoD detection on {} with {} and contamination rate {} wrongly reported as {}: {} ...".format(
-                        params.dataset_name,
-                        params.model_name,
-                        contamination, mis_cont, e))
-            finally:
 
                 if trainer.name == "shallow":
                     X, y_test = params.test[:, :-1], params.test[:, -1]
@@ -237,7 +226,17 @@ if __name__ == "__main__":
                 perf = [params.dataset_name, contamination, mis_cont, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
                 performances.loc[len(performances)] = perf
                 print("performance on", key, metrics[:4])
-
+            except RuntimeError as e:
+                logging.error(
+                    "OoD detection on {} with {} and contamination rate {} wrongly reported as {}  unfinished caused by {} ...".format(params.dataset_name,
+                                                                                                   params.model_name,
+                                                                                                   contamination, mis_cont, e))
+            except Exception as e:
+                logging.error(
+                    "Error for OoD detection on {} with {} and contamination rate {} wrongly reported as {}: {} ...".format(
+                        params.dataset_name,
+                        params.model_name,
+                        contamination, mis_cont, e))
     performances.to_csv("outputs/mis_contamination_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
 
 

@@ -26,26 +26,19 @@ Replace `[ENV_NAME]` with the name of your environment.
 
 
 Our model contains the following parameters:
-- `-m`: selected machine learning model (**required**)
-- `-d`: path to the dataset (**required**)
 - `--batch-size`: size of a training batch (**required**)
 - `--dataset`: name of the selected dataset. Choices are `Arrhythmia`, `KDD10`, `IDS2018`, `NSLKDD`, `USBIDS`, `Thyroid` (**required**).
-- `-e`: number of training epochs (default=200)
-- `--n-runs`: number of time the experiment is repeated (default=1)
-- `--lr`: learning rate used during optimization (default=1e-4)
-- `--pct`: percentage of the original data to keep (useful for large datasets, default=1.)
-- `rho`: anomaly ratio within the training set (default=0.)
-- `--results-path`: path where the results are stored (default="../results")
-- `--model-path`: path where models will be stored (default="../models")
-- `--test-mode`: loads models from `--model_path` and tests them (default=False)
+- `-epochs`: number of training epochs (default=200)
 Please note that datasets must be stored in `.npz` or `.mat` files. Use the preprocessing scripts within `data_process`
 to generate these files.
 
 ## Example
-To train a DAGMM on the KDD 10 percent dataset with the default parameters described in the original paper:
+To cleaning KDD dataset using Bopeto:
 ```
-$ python main.py -m=AE --dataset=KDD10 --dataset-path=../toy_data/kdd.npz --n-runs=15 --batch-size=4096 --batch-size-test=12288 --pct=.8 --rho=0.12 --hold_out=0.3 --test_pct=.50 --eval-test -e=20 --lr=1e-3 --reg_n=1e-0 --reg_a=1e-2 --num_clusters=5 --warmup=0 -lat=6
+$ python cleaning.py --dataset kdd 
 ```
-Replace `[/path/to/dataset.npz]` with the path to the dataset in a numpy-friendly format.
-
-Optionally, a Jupyter notebook is made available in `experiments.ipynb`
+To train a DAGMM on the KDD dataset:
+```
+$ python detection.py --dataset kdd --model dagmm --epochs 10
+```
+Make sure that your dataset is saved with a correct name as a .npz file with one key as your dataset name

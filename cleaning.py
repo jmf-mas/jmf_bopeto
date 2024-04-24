@@ -52,10 +52,11 @@ if __name__ == "__main__":
     n_out = len(data[params.dataset_name + "_contamination"])
     params.init_model(load=False)
     utils = Utils(params)
-    logging.info("Bopeto cleaning on {} dataset has started ...".format(params.dataset_name))
-    for rate in rates:
+    n_cases = len(rates)
+    for i, rate in enumerate(rates):
         cont = 0
         try:
+            print("{}/{}: cleaning on {}".format(i + 1, n_cases, params.dataset_name))
             ind = np.arange(int(rate*n_out))
             oo_dist = data[params.dataset_name + "_contamination"][ind]
             utils.params.data = utils.contaminate(in_dist, oo_dist)
@@ -99,16 +100,11 @@ if __name__ == "__main__":
             logging.error(
                 "Bopeto cleaning on {} and contamination rate {} unfinished caused by {} ...".format(
                     params.dataset_name,cont, e))
-        finally:
-            logging.error(
-                "Bopeto cleaning on {} and contamination rate {} has finished ...".format(
-                    params.dataset_name, cont))
 
     name = utils.params.dataset_name+"_"+utils.params.synthetic
     db = pd.DataFrame(data=cleaning, columns=['utils', 'n1', 'n2', 'r1', 'r2'])
     db.to_csv(outputs + name+".csv", index=False)
     np.savez("detection/"+utils.params.dataset_name+".npz", **data)
-    logging.info("Boepto cleaning on {} has finished ...".format(params.dataset_name))
 
 
 

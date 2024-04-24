@@ -1,12 +1,15 @@
-# Unsupervised data cleaning
-This repository collects different unsupervised machine learning algorithms to detect anomalies.
+# Bopeto: Unsupervised data cleaning for OoD detection
+This repository implements Bopeto method and collects different unsupervised machine learning algorithms to detect OoD instances.
 ## Implemented models
-We have implemented the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
+For OoD detection we have used the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
 - [x] [AE]()
 - [x] [ALAD]()
 - [x] [DSEBM]()
 - [x] [DAGMM]()
 - [x] [DeepSVDD]()
+- [x] [IsolationForest]()
+- [x] [LocalOutlierFactor]()
+- [x] [One-class SVM]()
 
 ## Dependencies
 A complete dependency list is available in requirements.txt.
@@ -36,11 +39,11 @@ Please note that datasets must be stored in `.npz` or `.mat` files. Use the prep
 to generate these files.
 
 ## Example
-To cleaning KDD dataset using Bopeto:
+Cleaning KDD dataset using Bopeto:
 ```
 $ python cleaning.py --dataset kdd 
 ```
-To train a DAGMM on the KDD dataset:
+Detecting OoD instances using a DAGMM on the KDD dataset:
 ```
 $ python detection.py --dataset kdd --model dagmm --epochs 10
 ```

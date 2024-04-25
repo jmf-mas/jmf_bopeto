@@ -83,7 +83,7 @@ class BaseShallowModel(ABC):
 
     def __init__(self, params):
         self.params = params
-        self.resolve_params(params.dataset_name)
+        self.resolve_params()
 
     def resolve_params(self):
         pass

@@ -196,11 +196,13 @@ if __name__ == "__main__":
     mo = mo(params)
     params.model = mo
     tr = tr(params)
-    filter_keys = ["nsl_train_contamination_0.31680212797399143"]
+    #filter_keys = ["nsl_train_contamination_0.31680212797399143"]
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         contamination, model_name_ = get_contamination(key, params.model_name)
-        mis_contamination = [contamination/4, contamination/2, contamination, 5*contamination/4, 3*contamination/2]
+        c_ = contamination + 0.01
+        mis_contamination = [c_/4, c_/2, contamination, 5*c_/4, 3*c_/2]
+        mis_contamination = np.unique(mis_contamination)
         n_mis = len(mis_contamination)
         for j, mis_cont in enumerate(mis_contamination):
             try:

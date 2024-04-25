@@ -1,10 +1,7 @@
-from models.dsebm import DSEBM
 from .base import BaseTrainer
 from .dataset import TabularDataset
 import numpy as np
-from collections import defaultdict
 from torch.nn import Parameter
-from sklearn import metrics
 import torch
 import torch.nn as nn
 from torch import optim
@@ -28,7 +25,7 @@ class TrainerDSEBM(BaseTrainer):
             lr=self.lr, betas=(0.5, 0.999)
         )
 
-    def train_iter(self, X):
+    def train_iter(self, X, w):
         noise = self.model.random_noise_like(X).to(self.device)
         X_noise = X + noise
         X.requires_grad_()
@@ -37,7 +34,7 @@ class TrainerDSEBM(BaseTrainer):
         energy_noise = self.energy(X_noise, out_noise)
         dEn_dX = torch.autograd.grad(energy_noise, X_noise, retain_graph=True, create_graph=True)
         fx_noise = (X_noise - dEn_dX[0])
-        return self.loss(X, fx_noise)
+        return self.loss(X, w, fx_noise)
 
     def score(self, sample: torch.Tensor):
         # Evaluation of the score based on the energy
@@ -56,7 +53,7 @@ class TrainerDSEBM(BaseTrainer):
 
     def test(self, data):
         self.model.eval()
-        test_set = TabularDataset(data)
+        test_set = TabularDataset(data, np.ones(data.shape[0]))
         test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         y_true, scores = [], []
@@ -73,20 +70,6 @@ class TrainerDSEBM(BaseTrainer):
         scores = scores_r if self.score_metric == "reconstruction" else scores_e
         return np.array(y_true), np.array(scores)
 
-    def evaluate(self, y_true: np.array, scores: np.array, threshold, pos_label: int = 1) -> dict:
-        res = defaultdict()
-        for score, name in zip(scores, ["score_e", "score_r"]):
-            res[name] = {"Precision": -1, "Recall": -1, "F1-Score": -1, "AUROC": -1, "AUPR": -1}
-            thresh = np.percentile(scores, threshold)
-            y_pred = self.predict(scores, thresh)
-            precision, recall, f1, _ = metrics.precision_recall_fscore_support(
-                y_true, y_pred, average='binary', pos_label=pos_label
-            )
-            res[name]["Precision"], res[name]["Recall"], res[name]["F1-Score"] = precision, recall, f1
-            res[name]["AUROC"] = metrics.roc_auc_score(y_true, scores)
-            res[name]["AUPR"] = metrics.average_precision_score(y_true, scores)
-        return res
-
     def ren_dict_keys(self, d: dict, prefix=''):
         d_ = {}
         for k in d.keys():
@@ -94,8 +77,8 @@ class TrainerDSEBM(BaseTrainer):
 
         return d_
 
-    def loss(self, X, fx_noise):
-        out = torch.square(X - fx_noise)
+    def loss(self, X, w, fx_noise):
+        out = w.unsqueeze(1)*torch.square(X - fx_noise)
         out = torch.sum(out, dim=-1)
         out = torch.mean(out)
         return out

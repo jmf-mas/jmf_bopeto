@@ -15,7 +15,7 @@ class Trainer:
         torch.cuda.empty_cache()
 
     def train(self, to_save=False):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
         scaler = GradScaler()
@@ -31,12 +31,12 @@ class Trainer:
             with trange(len(data_loader)) as t:
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
+                    weight = batch['weight'].to(self.params.device)
                     optimizer.zero_grad()
                     noisy_data = add_noise(data)
                     with torch.cuda.amp.autocast():
                         outputs = self.params.model(data)
-                        loss = torch.nn.MSELoss()(outputs, data)
-
+                        loss = (weight.unsqueeze(1)*(outputs - data) ** 2).sum(axis=-1).mean()
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
@@ -66,10 +66,9 @@ class TrainerAE(BaseTrainer):
         self.model = self.params.model
         super(TrainerAE, self).__init__(params)
 
-    def train_iter(self, X):
+    def train_iter(self, X, w):
         outputs = self.model(X)[1]
-
-        loss = ((X - outputs) ** 2).sum(axis=-1).mean()
+        loss = (w.unsqueeze(1) * (outputs - X) ** 2).sum(axis=-1).mean()
         return loss
     def score(self, sample):
         _, X_prime = self.model(sample)

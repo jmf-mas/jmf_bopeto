@@ -14,7 +14,8 @@ class FGM:
         self.data = torch.tensor(self.params.data[:, :-1], dtype=torch.float32)
         torch.cuda.empty_cache()
     def generate(self):
-        dataset = TabularDataset(self.params.fragment)
+        weights = np.ones(self.params.fragment.shape[0])
+        dataset = TabularDataset(self.params.fragment, weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)

@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.1)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=10)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
+    parser.add_argument('-c', '--num_contamination_subsets', nargs='?', const=1, type=int, default=3)
     parser.add_argument('--dataset', type=str, default='kdd', help='data set name')
     parser.add_argument('--synthetic', type=str, default='FGM', help='path to data sets to use')
 
@@ -39,13 +40,14 @@ if __name__ == "__main__":
     params.gamma = configs['gamma']
     params.epochs = configs['epochs']
     params.synthetic  = configs['synthetic']
+    params.num_contamination_subsets = configs['num_contamination_subsets']
     params.metric = 'sdc'
     params.model_name = "AECleaning"
     splitter = Splitter(params.dataset_name)
 
     data = splitter.split()
 
-    rates = np.linspace(0, 1, 11)[1:]
+    rates = np.linspace(0, 1, params.num_contamination_subsets)
     cleaning = []
     in_dist = data[params.dataset_name + "_train"]
     params.in_features = in_dist.shape[1] - 1
@@ -60,11 +62,12 @@ if __name__ == "__main__":
             ind = np.arange(int(rate*n_out))
             oo_dist = data[params.dataset_name + "_contamination"][ind]
             utils.params.data = utils.contaminate(in_dist, oo_dist)
+            utils.params.weights = np.ones(utils.params.data.shape[0])
             utils.params.set_model()
             #training
             print("initial training")
             _ = utils.initial_train()
-            before = contamination(params.data)
+            before = contamination(utils.params.data)
             print("before", before)
             cont = before[1]
             data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
@@ -74,6 +77,7 @@ if __name__ == "__main__":
             utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
             synthetic = utils.generate_synthetic_data()
             utils.params.update_data(synthetic)
+            utils.params.weights = np.ones(utils.params.data.shape[0])
             np.savetxt(utils.params.dataset_name + '.csv', utils.params.data, delimiter=',')
             # filtering
             y = utils.params.data[:, -1]
@@ -86,11 +90,11 @@ if __name__ == "__main__":
             utils.params.dynamics = dynamics
             utils.params.update_metric(params.metric)
             b = BOPETO(utils.params)
-            indices = b.refine(True)
+            weights, indices = b.refine()
             refined_data = utils.params.data[indices]
             after = contamination(refined_data)
             print("after with", params.metric, after)
-            data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = refined_data
+            data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = weights
             cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
         except RuntimeError as e:
             logging.error(

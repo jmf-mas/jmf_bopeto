@@ -11,7 +11,7 @@ from trainer.dsebm import TrainerDSEBM
 from trainer.alad import TrainerALAD
 from trainer.svdd import TrainerSVDD
 from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary, get_contamination, \
-    resolve_model_trainer
+    resolve_model_trainer, find_match
 from models.svdd import DeepSVDD
 from models.alad import ALAD
 from models.dsebm import  DSEBM
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
+    parser.add_argument('--cleaning', type=str, default='hard', help='type of cleaning (hard or soft)')
 
     #DaGMM
     parser.add_argument('--gmm_k', type=int, default=4)
@@ -192,18 +193,21 @@ if __name__ == "__main__":
     params.model_name = configs['model']
     params.early_stopping = configs['early_stopping']
     params.dataset_name = configs['dataset']
+    params.cleaning = configs['cleaning']
     data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
     keys = list(data.keys())
-    filter_keys = list(filter(lambda s: "train" in s, keys))
+    filter_keys = list(filter(lambda s: "train_" in s, keys))
     params.test = data[params.dataset_name+"_test"]
     params.val = data[params.dataset_name + "_val"]
     params.in_features = params.val.shape[1]-1
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
+
     tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
     mo = mo(params)
     params.model = mo
     tr = tr(params)
+    filter_keys = ["nsl_train_bopeto_sdc_0.31680212797399143", "nsl_train_contamination_0.31680212797399143"]
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         try:
@@ -211,9 +215,24 @@ if __name__ == "__main__":
             model = deepcopy(mo)
             model.params.data = data[key]
             trainer = deepcopy(tr)
-            trainer.params.data = data[key]
-            trainer.params.model = model
             contamination, model_name_ = get_contamination(key, params.model_name)
+            if "contamination" in key:
+                trainer.params.data = data[key]
+                trainer.params.weights = np.ones(trainer.params.data.shape[0])
+            else:
+                match = find_match(filter_keys, contamination)
+                if not match:
+                    break
+                trainer.params.data = data[match]
+                weights = data[key]
+                if trainer.params.cleaning == "hard":
+                    weight = weights[:, 0]
+                    trainer.params.data = trainer.params.data[weight==1]
+                    trainer.params.weights = np.ones(trainer.params.data.shape[0])
+                else:
+                    trainer.params.weights = weights[:, 1]
+
+            trainer.params.model = model
             trainer.train()
 
             if trainer.name == "shallow":

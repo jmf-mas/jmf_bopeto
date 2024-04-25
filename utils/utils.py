@@ -2,6 +2,7 @@ from sklearn import metrics as sk_metrics
 import numpy as np
 from trainer.ae import Trainer
 from synthetic.generation import JMF, FGM
+import re
 
 class Utils:
     def __init__(self, params):
@@ -174,6 +175,14 @@ def _estimate_threshold_metrics(test_score, y_test, pos_label=1, nq=100, optimal
     }
 
 
+def find_match(strings, rate):
+    substring1 = "contamination"
+    substring2 = str(rate)
+    pattern = re.compile(f".*{re.escape(substring1)}.*{re.escape(substring2)}.*")
+    for string in strings:
+        if pattern.match(string):
+            return string
+    return None
 
 
 

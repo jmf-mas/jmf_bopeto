@@ -39,7 +39,7 @@ class TrainerALAD(BaseTrainer):
             lr=self.lr, betas=(0.5, 0.999)
         )
 
-    def train_iter_dis(self, X):
+    def train_iter_dis(self, X, weight):
 
         # Labels
         y_true = Variable(torch.zeros(X.size(0), 1)).to(self.device)
@@ -71,7 +71,7 @@ class TrainerALAD(BaseTrainer):
         return loss_ge
 
     def train(self):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         self.model.train()
@@ -81,12 +81,13 @@ class TrainerALAD(BaseTrainer):
 
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
+                    weight = batch['weight'].to(self.params.device)
                     X_dis, X_gen = data, data.clone().to(self.device).float()
                     # Forward pass
 
                     # Cleaning gradients
                     self.optim_d.zero_grad()
-                    loss_d = self.train_iter_dis(X_dis)
+                    loss_d = self.train_iter_dis(X_dis, weight)
                     # Backward pass
                     loss_d.backward()
                     self.optim_d.step()

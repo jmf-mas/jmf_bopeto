@@ -69,26 +69,15 @@ class NeuTraLAD(BaseModel):
         self.enc = nn.Sequential(*enc_layers).to(self.device)
         self.masks = self._create_masks()
 
-    def resolve_params(self, dataset: str):
+    def resolve_params(self):
         K, Z = 7, 32
         # out_dims = np.linspace(self.D, Z, self.n_layers, dtype=np.int32)
         out_dims = [90, 70, 50] + [Z]
         trans_layers = [24, 6]
-        if dataset == 'Thyroid':
-            Z = 24
-            K = 11
-            out_dims = [24] * 4 + [Z]
-            trans_layers = [24, 6]
-        elif dataset == 'Arrhythmia':
-            K = 11
-            out_dims = [64] * 4 + [Z]
-            trans_layers = [200, self.in_features]
-            # out_dims[:-1] *= 2
-        else:
-            self.trans_type = 'mul'
-            K = 11
-            out_dims = [64] * 4 + [Z]
-            trans_layers = [200, self.in_features]
+        self.trans_type = 'mul'
+        K = 11
+        out_dims = [64] * 4 + [Z]
+        trans_layers = [200, self.in_features]
         self.K, self.Z, self.emb_out_dims, self.trans_layers = K, Z, out_dims, trans_layers
         self._build_network()
 

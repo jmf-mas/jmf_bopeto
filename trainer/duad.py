@@ -15,7 +15,7 @@ class TrainerDUAD:
         self.params = params
         self.model = self.params.model
         self.model.to(params.device)
-        super(TrainerDUAD, self).__init__(params)
+        #super(TrainerDUAD, self).__init__(params)
         self.metric_hist = []
         self.r = params.r
         self.p = params.p
@@ -26,7 +26,6 @@ class TrainerDUAD:
         self.device = params.device
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr,weight_decay=params.weight_decay)
         self.criterion = nn.MSELoss()
-
         self.dm = DataManager(params)
 
 
@@ -55,8 +54,6 @@ class TrainerDUAD:
         return indices_selection
 
     def train(self):
-
-
         mean_loss = np.inf
         self.dm.update_train_set(self.dm.get_selected_indices())
         train_ldr = self.dm.get_train_set()
@@ -64,16 +61,24 @@ class TrainerDUAD:
         X = []
         y = []
         indices = []
-        for i, X_i in enumerate(train_ldr, 0):
-            X.append(X_i[0])
-            indices.append(X_i[2])
-            y.append(X_i[1])
+        print("here zero")
+        for i, batch in enumerate(train_ldr):
+            data = batch['data'].to(self.params.device)
+            weight = batch['weight'].to(self.params.device)
+            target = batch['target'].to(self.params.device)
+            index = batch['index'].to(self.params.device)
+            X.append(data)
+            indices.append(index)
+            y.append(target)
+            print("zero", i)
 
         X = torch.cat(X, axis=0)
         y = torch.cat(y, axis=0)
 
         indices = torch.cat(indices, axis=0)
+        print("here one")
         train_ldr = self.dm.get_train_set()
+        print("here one")
 
         L = []
         L_old = [-1]
@@ -156,7 +161,7 @@ class TrainerDUAD:
 
     def test(self, data):
         self.model.eval()
-        test_set = TabularDataset(data)
+        test_set = TabularDataset(data, np.ones(data.shape[0]))
         test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
 
@@ -180,6 +185,7 @@ class TrainerDUAD:
 class MySubset(Subset):
 
     def __getitem__(self, idx):
+        print("jordan",self.dataset['data'])
         data = self.dataset[self.indices[idx]]
         return data['data'], data['target'], idx
 
@@ -189,16 +195,16 @@ class DataManager:
     def __init__(self, params):
 
         self.params = params
-        training_data = TabularDataset(self.params.data)
+        training_data = TabularDataset(self.params.data, self.params.weights)
         self.train_set = DataLoader(training_data, batch_size=self.params.batch_size, shuffle=True,
                                   num_workers=self.params.num_workers)
-        val_data = TabularDataset(self.params.val)
+        val_data = TabularDataset(self.params.val, np.ones(self.params.val.shape[0]))
         self.test_set = DataLoader(val_data, batch_size=self.params.batch_size, shuffle=True,
                                 num_workers=self.params.num_workers)
 
         self.batch_size = params.batch_size
         self.num_classes = params.num_cluster
-        self.input_shape = (params.data.shape[0], self.input_shape)
+        self.input_shape = (params.data.shape[0], self.params.in_features)
         self.anomaly_ratio = params.contamination_rate
         self.validation = params.validation
         self.seed = params.seed
@@ -210,14 +216,12 @@ class DataManager:
         self.current_train_set = MySubset(self.train_set, self.train_selection_mask.nonzero().squeeze())
 
         train_sampler, val_sampler = self.train_validation_split(
-            len(self.train_set), self.validation, self.seed
-        )
+            len(self.train_set), self.validation)
 
         self.init_train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
         self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
         self.validation_loader = DataLoader(self.train_set, self.batch_size, sampler=val_sampler)
         self.test_loader = DataLoader(self.test_set, params.batch_size, shuffle=True)
-
     def get_current_training_set(self):
         return self.current_train_set
 
@@ -232,8 +236,7 @@ class DataManager:
         self.train_selection_mask[selected_indices] = 1
         lbl_sample_idx = self.train_selection_mask.nonzero().squeeze()
         self.current_train_set = MySubset(self.train_set, lbl_sample_idx)
-        train_sampler, val_sampler = self.train_validation_split(len(self.current_train_set), self.validation,
-                                                                 self.seed)
+        train_sampler, val_sampler = self.train_validation_split(len(self.current_train_set), self.validation)
         self.train_loader = DataLoader(self.current_train_set, self.batch_size, sampler=train_sampler)
         self.validation_loader = DataLoader(self.current_train_set, self.batch_size, sampler=val_sampler)
         return self.train_loader, self.validation_loader

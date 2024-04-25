@@ -49,10 +49,10 @@ class BaseTrainer(ABC):
         pass
 
     def set_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.params.weight_decay)
+        return optim.Adam(self.params.model.parameters(), lr=self.lr, weight_decay=self.params.weight_decay)
 
     def train(self):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
 
         self.model.train()
@@ -63,8 +63,9 @@ class BaseTrainer(ABC):
             with trange(len(data_loader)) as t:
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
+                    weight = batch['weight'].to(self.params.device)
                     self.optimizer.zero_grad()
-                    loss = self.train_iter(data)
+                    loss = self.train_iter(data, weight)
 
                     # Backpropagation
                     loss.backward()
@@ -80,42 +81,8 @@ class BaseTrainer(ABC):
 
         self.after_training()
 
-    def eval(self, dataset: DataLoader):
-        self.model.eval()
-        with torch.no_grad():
-            loss = 0
-            for row in dataset:
-                data = row['data'].to(self.params.device)
-                loss += self.train_iter(data)
-        self.model.train()
-
-        return loss
-
-    def _eval(self, dataset: DataLoader):
-        self.model.eval()
-        y_true, scores = [], []
-        with torch.no_grad():
-            for row in dataset:
-                X = row['data'].to(self.params.device)
-                y = row['target'].to(self.params.device)
-                X = X.to(self.device).float()
-                score = self.score(X)
-                y_true.append(y.cpu().numpy())
-                scores.append(score.cpu().numpy())
-        self.model.train()
-
-        y_true, scores = np.concatenate(y_true, axis=0), np.concatenate(scores, axis=0)
-        # _estimate_threshold_metrics
-
-        accuracy, precision, recall, f_score, roc, avgpr = _estimate_threshold_metrics(scores, y_true,
-                                                                                       optimal=False)
-
-        return {k: round(v, 3) for k, v in
-                dict(accuracy=accuracy,
-                     precision=precision, recall=recall, f_score=f_score, avgpr=avgpr, proc1p=roc).items()}
-
     def test(self, data):
-        test_set = TabularDataset(data)
+        test_set = TabularDataset(data, np.ones(data.shape[0]))
         test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         self.model.eval()
@@ -130,21 +97,6 @@ class BaseTrainer(ABC):
         self.model.train()
 
         return np.array(y_true), np.array(scores)
-
-    def test_return_all(self, dataset: DataLoader) -> Union[np.array, np.array]:
-        self.model.eval()
-        y_true, scores, xs = [], [], []
-        with torch.no_grad():
-            for row in dataset:
-                X, y = row[0], row[1]
-                X = X.to(self.device).float()
-                score = self.score(X)
-                y_true.extend(y.cpu().tolist())
-                scores.extend(score.cpu().tolist())
-                xs.extend(X.cpu().tolist())
-        self.model.train()
-
-        return np.array(y_true), np.array(scores), np.array(xs)
 
     def get_params(self) -> dict:
         return {
@@ -163,7 +115,7 @@ class TrainerBaseShallow(ABC):
         self.name = "shallow"
 
     def train(self):
-        self.params.model.clf.fit(self.params.data[:, :-1])
+        self.params.model.clf.fit(self.params.data[self.params.weights==1, :-1])
 
     def score(self, sample):
         return self.params.model.clf.predict(sample)

@@ -24,10 +24,11 @@ class TrainerNeuTraLAD(BaseTrainer):
         loss_n, loss_a = self.model(sample)
         return loss_n
 
-    def train_iter(self, sample):
+    def train_iter(self, sample, weight):
         alpha = self.params.contamination_rate
         y = self.params.label
         loss_n, loss_a = self.model(sample)
+        loss_n =  weight.unsqueeze(1)*loss_n
         loss = loss_n.mean()
         if self.params.rob and self.params.warmup < 1 + self.params.epochs:
             if self.params.rob_method == 'loe':

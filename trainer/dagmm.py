@@ -21,7 +21,7 @@ class TrainerDAGMM(BaseTrainer):
         self.covs = None
 
 
-    def train_iter(self, sample):
+    def train_iter(self, sample, weight):
         z_c, x_prime, _, z_r, gamma_hat = self.model(sample)
         phi, mu, cov_mat = self.compute_params(z_r, gamma_hat)
         energy_result, pen_cov_mat = self.estimate_sample_energy(
@@ -30,15 +30,15 @@ class TrainerDAGMM(BaseTrainer):
         self.phi = phi.data
         self.mu = mu.data
         self.cov_mat = cov_mat
-        return self.loss(sample, x_prime, energy_result, pen_cov_mat)
+        return self.loss(sample, weight, x_prime, energy_result, pen_cov_mat)
 
-    def loss(self, x, x_prime, energy, pen_cov_mat):
-        rec_err = ((x - x_prime) ** 2).mean()
+    def loss(self, x, w, x_prime, energy, pen_cov_mat):
+        rec_err = (w.unsqueeze(1) * (x - x_prime) ** 2).sum(axis=-1).mean()
         return rec_err + self.lamb_1 * energy + self.lamb_2 * pen_cov_mat
 
     def test(self, data):
         self.model.eval()
-        test_set = TabularDataset(data)
+        test_set = TabularDataset(data, np.ones(data.shape[0]))
         test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
 

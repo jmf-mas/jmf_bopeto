@@ -40,7 +40,7 @@ class OCSVM(BaseShallowModel):
 class LOF(BaseShallowModel):
     def __init__(self, params):
         super(LOF, self).__init__(params)
-        self.clf = LocalOutlierFactor(contamination = params.contamination_rate, n_neighbors=20, n_jobs=-1)
+        self.clf = LocalOutlierFactor(novelty = params.novelty, contamination = params.contamination_rate, n_neighbors=20, n_jobs=-1)
         self.name = "LOF"
 
     def get_params(self) -> dict:

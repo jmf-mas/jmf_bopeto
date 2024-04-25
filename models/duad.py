@@ -15,7 +15,7 @@ class DUAD(BaseModel):
         super(DUAD, self).__init__(params)
         self.cosim = nn.CosineSimilarity()
 
-    def resolve_params(self, dataset_name: str):
+    def resolve_params(self):
         enc_layers = [
             (self.in_features, 60, nn.Tanh()),
             (60, 30, nn.Tanh()),

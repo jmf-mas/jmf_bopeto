@@ -1,7 +1,10 @@
 import argparse
 import numpy as np
 import pandas as pd
+
+from models.duad import DUAD
 from models.shallow import IF, LOF, OCSVM
+from trainer.duad import TrainerDUAD
 from utils.params import Params
 from trainer.ae import  TrainerAE
 from copy import deepcopy
@@ -25,6 +28,7 @@ logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='
 outputs = "outputs/"
 
 model_trainer_map = {
+    "duad": (TrainerDUAD, DUAD),
     "alad": (TrainerALAD, ALAD),
     "dagmm": (TrainerDAGMM, DAGMM),
     "dsebm": (TrainerDSEBM, DSEBM),
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     mo = mo(params)
     params.model = mo
     tr = tr(params)
-    filter_keys = ["nsl_train_bopeto_sdc_0.31680212797399143", "nsl_train_contamination_0.31680212797399143"]
+    filter_keys = ["nsl_train_contamination_0.0", "nsl_train_bopeto_sdc_0.0", "nsl_train_bopeto_sdc_0.31680212797399143", "nsl_train_contamination_0.31680212797399143"]
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         try:

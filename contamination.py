@@ -1,11 +1,8 @@
 import argparse
 import numpy as np
 import pandas as pd
-
-from models.duad import DUAD
 from models.neutralad import NeuTraLAD
 from models.shallow import IF, LOF
-from trainer.duad import TrainerDUAD
 from trainer.neutralad import TrainerNeuTraLAD
 from utils.params import Params
 from copy import deepcopy
@@ -20,7 +17,6 @@ logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, forma
 outputs = "outputs/"
 
 model_trainer_map = {
-    "duad": (TrainerDUAD, DUAD),
     "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
@@ -205,42 +201,42 @@ if __name__ == "__main__":
         mis_contamination = np.unique(mis_contamination)
         n_mis = len(mis_contamination)
         for j, mis_cont in enumerate(mis_contamination):
-            try:
-                print("{}/{}: training on {}".format(i * n_mis + j + 1, n_mis*n_cases, key))
-                model = deepcopy(mo)
-                model.params.true_contamination_rate = contamination
-                model.params.contamination_rate = mis_cont
-                model.params.data = data[key]
-                trainer = deepcopy(tr)
-                trainer.params.data = data[key]
-                trainer.params.model = model
-                trainer.params.weights = np.ones(trainer.params.data.shape[0])
-                trainer.train()
-                if trainer.name == "shallow":
-                    X, y_test = params.test[:, :-1], params.test[:, -1]
-                    y_pred = trainer.test(X)
-                    metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
-                else:
-                    y_val, score_val = trainer.test(params.val)
-                    y_test, score_test = trainer.test(params.test)
-                    threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
-                    threshold = threshold["Thresh_star"]
-                    metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
+            # try:
+            print("{}/{}: training on {}".format(i * n_mis + j + 1, n_mis*n_cases, key))
+            model = deepcopy(mo)
+            model.params.true_contamination_rate = contamination
+            model.params.contamination_rate = mis_cont
+            model.params.data = data[key]
+            trainer = deepcopy(tr)
+            trainer.params.data = data[key]
+            trainer.params.model = model
+            trainer.params.weights = np.ones(trainer.params.data.shape[0])
+            trainer.train()
+            if trainer.name == "shallow":
+                X, y_test = params.test[:, :-1], params.test[:, -1]
+                y_pred = trainer.test(X)
+                metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
+            else:
+                y_val, score_val = trainer.test(params.val)
+                y_test, score_test = trainer.test(params.test)
+                threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
+                threshold = threshold["Thresh_star"]
+                metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
 
-                perf = [params.dataset_name, contamination, mis_cont, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-                performances.loc[len(performances)] = perf
-                print("performance on", key, "with reported contamination", mis_cont, metrics[:4])
-            except RuntimeError as e:
-                logging.error(
-                    "OoD detection on {} with {} and contamination rate {} wrongly reported as {}  unfinished caused by {} ...".format(params.dataset_name,
-                                                                                                   params.model_name,
-                                                                                                   contamination, mis_cont, e))
-            except Exception as e:
-                logging.error(
-                    "Error for OoD detection on {} with {} and contamination rate {} wrongly reported as {}: {} ...".format(
-                        params.dataset_name,
-                        params.model_name,
-                        contamination, mis_cont, e))
+            perf = [params.dataset_name, contamination, mis_cont, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+            performances.loc[len(performances)] = perf
+            print("performance on", key, "with reported contamination", mis_cont, metrics[:4])
+            # except RuntimeError as e:
+            #     logging.error(
+            #         "OoD detection on {} with {} and contamination rate {} wrongly reported as {}  unfinished caused by {} ...".format(params.dataset_name,
+            #                                                                                        params.model_name,
+            #                                                                                        contamination, mis_cont, e))
+            # except Exception as e:
+            #     logging.error(
+            #         "Error for OoD detection on {} with {} and contamination rate {} wrongly reported as {}: {} ...".format(
+            #             params.dataset_name,
+            #             params.model_name,
+            #             contamination, mis_cont, e))
     performances.to_csv("outputs/mis_contamination_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
 
 

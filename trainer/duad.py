@@ -15,11 +15,11 @@ class TrainerDUAD:
         self.params = params
         self.model = self.params.model
         self.model.to(params.device)
-        #super(TrainerDUAD, self).__init__(params)
         self.metric_hist = []
         self.r = params.r
         self.p = params.p
         self.p0 = params.p0
+        self.name = "duad"
         self.num_cluster = params.num_cluster
         self.lr = params.learning_rate
         self.n_epochs = params.epochs
@@ -61,36 +61,29 @@ class TrainerDUAD:
         X = []
         y = []
         indices = []
-        print("here zero")
         for i, batch in enumerate(train_ldr):
-            data = batch['data'].to(self.params.device)
-            weight = batch['weight'].to(self.params.device)
-            target = batch['target'].to(self.params.device)
-            index = batch['index'].to(self.params.device)
+            data = batch[0]
+            targets = batch[1]
+            weights = batch[2]
+            index = batch[3]
             X.append(data)
             indices.append(index)
-            y.append(target)
-            print("zero", i)
-
+            y.append(targets)
         X = torch.cat(X, axis=0)
         y = torch.cat(y, axis=0)
 
         indices = torch.cat(indices, axis=0)
-        print("here one")
         train_ldr = self.dm.get_train_set()
-        print("here one")
 
         L = []
         L_old = [-1]
         reev_count = 0
         while len(set(L_old).difference(set(L))) <= 10 and reev_count < REEVAL_LIMIT:
             for epoch in range(self.n_epochs):
-                print(f"\nEpoch: {epoch + 1} of {self.n_epochs}")
                 if (epoch + 1) % self.r == 0:
                     self.model.eval()
                     L_old = deepcopy(L)
                     with torch.no_grad():
-                        print("\nRe-evaluation")
                         indices = []
                         Z = []
                         X = []
@@ -185,9 +178,8 @@ class TrainerDUAD:
 class MySubset(Subset):
 
     def __getitem__(self, idx):
-        print("jordan",self.dataset['data'])
         data = self.dataset[self.indices[idx]]
-        return data['data'], data['target'], idx
+        return data['data'], data['target'], data['weight'], idx
 
 
 class DataManager:
@@ -195,12 +187,13 @@ class DataManager:
     def __init__(self, params):
 
         self.params = params
-        training_data = TabularDataset(self.params.data, self.params.weights)
-        self.train_set = DataLoader(training_data, batch_size=self.params.batch_size, shuffle=True,
-                                  num_workers=self.params.num_workers)
-        val_data = TabularDataset(self.params.val, np.ones(self.params.val.shape[0]))
-        self.test_set = DataLoader(val_data, batch_size=self.params.batch_size, shuffle=True,
-                                num_workers=self.params.num_workers)
+        self.train_set = TabularDataset(self.params.data, np.ones(self.params.data.shape[0]))
+       # print("jordan = ", training_data)
+        #self.train_set = DataLoader(training_data, batch_size=self.params.batch_size, shuffle=True,
+         #                         num_workers=self.params.num_workers)
+        self.test_set = TabularDataset(self.params.val, np.ones(self.params.val.shape[0]))
+        #self.test_set = DataLoader(val_data, batch_size=self.params.batch_size, shuffle=True,
+         #                       num_workers=self.params.num_workers)
 
         self.batch_size = params.batch_size
         self.num_classes = params.num_cluster

@@ -42,7 +42,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
-    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
+    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=30)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
@@ -56,7 +56,6 @@ if __name__ == "__main__":
     parser.add_argument('--sample_step', type=int, default=194)
     parser.add_argument('--model_save_step', type=int, default=194)
 
-    # Jeff
     parser.add_argument(
         '--n-runs',
         help='number of runs of the experiment',
@@ -207,8 +206,6 @@ if __name__ == "__main__":
     mo = mo(params)
     params.model = mo
     tr = tr(params)
-    filter_keys = ["nsl_train_contamination_0.0", "nsl_train_bopeto_sdc_0.0", "nsl_train_bopeto_sdc_0.31680212797399143", "nsl_train_contamination_0.31680212797399143"]
-    filter_keys = ["nsl_train_bopeto_sdc_0.31680212797399143", "nsl_train_contamination_0.31680212797399143"]
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         try:

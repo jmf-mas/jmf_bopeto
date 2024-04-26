@@ -28,6 +28,7 @@ class BOPETO:
         hard_weights = y_pred.astype(int).reshape(-1, 1)
         scaler = MinMaxScaler(feature_range=(0, 1))
         soft_weights = scaler.fit_transform(anomaly_scores.reshape(-1, 1))
+        soft_weights[hard_weights==1] = 1
         weights = np.hstack((hard_weights, soft_weights))
         training_indices =  list(db[db["class"] != "synthetic"].index)
         return weights[training_indices], indices

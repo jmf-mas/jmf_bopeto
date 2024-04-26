@@ -137,5 +137,5 @@ class TrainerBaseShallow(ABC):
 def weighted_loss(x_in, x_out, weights):
     mse = nn.MSELoss(reduction='none')
     loss = mse(x_in, x_out)
-    return torch.mean(loss * weights)
+    return torch.mean(loss * weights.unsqueeze(1))
 

@@ -8,7 +8,7 @@ class IF(BaseShallowModel):
 
     def __init__(self, params):
         super(IF, self).__init__(params)
-        self.clf = IsolationForest(n_estimators=50, contamination = params.contamination_rate)
+        self.clf = IsolationForest(n_estimators=50, contamination = params.contamination_rate, random_state=42)
         self.name = "IF"
 
     def get_params(self) -> dict:

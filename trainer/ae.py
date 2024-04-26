@@ -42,7 +42,7 @@ class Trainer:
                     scaler.update()
                     epoch_loss += loss.item()
                     t.set_postfix(
-                        loss='{:.3f}'.format(epoch_loss / counter),
+                        loss='{:.4f}'.format(epoch_loss / counter),
                         epoch=epoch + 1
                     )
                     t.update()

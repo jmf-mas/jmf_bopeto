@@ -6,8 +6,6 @@ from torch.cuda.amp import GradScaler, autocast
 from trainer.dataset import TabularDataset
 import numpy as np
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 class FGM:
     def __init__(self, params):
         self.params = params
@@ -25,7 +23,7 @@ class FGM:
 
         adversarial_examples = []
         for batch in data_loader:
-            data = batch['data'].to(device)
+            data = batch['data'].to(self.params.device)
             optimizer.zero_grad()
 
             with torch.cuda.amp.autocast():

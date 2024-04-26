@@ -14,18 +14,14 @@ np.random.seed(42)
 outputs = "outputs/"
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Bopeto",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="Bopeto", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--batch_size', nargs='?', const=1, type=int, default=64)
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-6)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
-    parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
-    parser.add_argument('-g', '--gamma', nargs='?', const=1, type=float, default=0.1)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=10)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('-c', '--num_contamination_subsets', nargs='?', const=1, type=int, default=10)
     parser.add_argument('--dataset', type=str, default='kdd', help='data set name')
-    parser.add_argument('--synthetic', type=str, default='FGM', help='approach to generate synthetic data')
 
     args = parser.parse_args()
     configs = vars(args)
@@ -35,12 +31,8 @@ if __name__ == "__main__":
     params.learning_rate = configs['learning_rate']
     params.weight_decay = configs['weight_decay']
     params.num_workers = configs['num_workers']
-    params.alpha = configs['alpha']
-    params.gamma = configs['gamma']
     params.epochs = configs['epochs']
-    params.synthetic  = configs['synthetic']
     params.num_contamination_subsets = configs['num_contamination_subsets']
-    params.metric = 'sdc'
     params.model_name = "AECleaning"
     splitter = Splitter(params.dataset_name)
 
@@ -71,7 +63,7 @@ if __name__ == "__main__":
             data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
             print("synthetic data generation ...")
             N = len(utils.params.data)
-            M = int(np.ceil(utils.params.gamma * N))
+            M = int(np.ceil(0.3 * N))
             utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
             synthetic = utils.generate_synthetic_data()
             utils.params.update_data(synthetic)
@@ -86,13 +78,12 @@ if __name__ == "__main__":
             np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
             dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
             utils.params.dynamics = dynamics
-            utils.params.update_metric(params.metric)
             b = BOPETO(utils.params)
             weights, indices = b.refine()
             refined_data = utils.params.data[indices]
             after = contamination(refined_data)
-            data[params.dataset_name + "_train_bopeto_" +params.metric+"_"+ str(before[1])] = weights
-            cleaning.append([params.metric, before[0], after[0], before[1], after[1]])
+            data[params.dataset_name + "_train_bopeto_"+ str(before[1])] = weights
+            cleaning.append([before[0], after[0], before[1], after[1]])
         except RuntimeError as e:
             logging.error(
                 "Error for Bopeto cleaning on {} and contamination rate {}: {} ...".format(
@@ -102,9 +93,8 @@ if __name__ == "__main__":
                 "Bopeto cleaning on {} and contamination rate {} unfinished caused by {} ...".format(
                     params.dataset_name,cont, e))
 
-    name = utils.params.dataset_name+"_"+utils.params.synthetic
-    db = pd.DataFrame(data=cleaning, columns=['utils', 'n1', 'n2', 'r1', 'r2'])
-    db.to_csv(outputs + name+".csv", index=False)
+    db = pd.DataFrame(data=cleaning, columns=['n1', 'n2', 'r1', 'r2'])
+    db.to_csv(outputs + utils.params.dataset_name+".csv", index=False)
     np.savez("detection/"+utils.params.dataset_name+".npz", **data)
 
 

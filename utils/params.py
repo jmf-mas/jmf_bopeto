@@ -16,12 +16,9 @@ class Params:
         self.learning_rate = None
         self.weight_decay = None
         self.alpha = None
-        self.gamma = None
         self.epochs = None
         self.dataset_name = None
-        self.metric = None
         self.data = None
-        self.synthetic = None
         self.model_name = None
         self.num_workers = None
         self.dynamics = None
@@ -67,7 +64,7 @@ class Params:
         self.label = None
 
     def set_model(self):
-        self.id = self.dataset_name+"_"+self.synthetic + "_" +self.metric+"_ae_rate_"+str(self.rate)
+        self.id = self.dataset_name+"_"+"_ae_rate_"+str(self.rate)
         self.model = AECleaning(self)
         self.model.load()
         self.model.name = self.id
@@ -87,9 +84,6 @@ class Params:
 
     def update_rate(self, rate):
         self.rate = rate
-
-    def update_metric(self, metric):
-        self.metric = metric
 
 
 

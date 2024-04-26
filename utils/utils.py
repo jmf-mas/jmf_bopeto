@@ -19,10 +19,7 @@ class Utils:
         return errors
 
     def generate_synthetic_data(self):
-        if self.params.synthetic == "JMF":
-            generator = JMF(self.params)
-        else:
-            generator = FGM(self.params)
+        generator = FGM(self.params)
         return generator.generate()
 
     def contaminate(self, in_dist, oo_dist):

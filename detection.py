@@ -19,6 +19,8 @@ from models.ae import AEDetecting
 from models.dagmm import DAGMM
 import logging
 
+np.random.seed(42)
+
 logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 

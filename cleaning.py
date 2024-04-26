@@ -9,7 +9,7 @@ from trainer.split import Splitter
 import logging
 
 logging.basicConfig(filename='logs/bopeto.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+np.random.seed(42)
 
 outputs = "outputs/"
 

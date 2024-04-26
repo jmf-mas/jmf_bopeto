@@ -14,8 +14,9 @@ from utils.utils import estimate_optimal_threshold, compute_metrics, compute_met
     get_contamination
 import logging
 
-logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+np.random.seed(42)
 
+logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 outputs = "outputs/"
 

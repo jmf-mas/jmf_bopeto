@@ -3,6 +3,7 @@ import torch
 
 from abc import ABC, abstractmethod
 from typing import Union
+import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
 from tqdm import trange
@@ -109,6 +110,7 @@ class BaseTrainer(ABC):
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
 
+
 class TrainerBaseShallow(ABC):
     def __init__(self, params):
         self.params = params
@@ -131,3 +133,9 @@ class TrainerBaseShallow(ABC):
 
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
+
+def weighted_loss(x_in, x_out, weights):
+    mse = nn.MSELoss(reduction='none')
+    loss = mse(x_in, x_out)
+    return torch.mean(loss * weights)
+

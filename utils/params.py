@@ -60,7 +60,7 @@ class Params:
         # neuralad
         self.n_layers = 3
         self.trans_type = 'res'
-        self.temperature = 0.07
+        self.temperature = 0.1
         self.rob = None
         self.warmup = 0.1
         self.rob_method = "loe"

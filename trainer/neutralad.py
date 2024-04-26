@@ -14,9 +14,7 @@ class TrainerNeuTraLAD(BaseTrainer):
         mask_params = list()
         for mask in self.model.masks:
             mask_params += list(mask.parameters())
-        self.optimizer = optim.Adam(list(self.model.enc.parameters()) + mask_params, lr=self.lr,
-                                    weight_decay=self.weight_decay)
-
+        self.optimizer = optim.Adam(list(self.model.enc.parameters()) + mask_params, lr=self.lr, weight_decay=self.weight_decay)
         self.scheduler = StepLR(self.optimizer, step_size=20, gamma=0.9)
         self.criterion = nn.MSELoss()
 
@@ -28,7 +26,7 @@ class TrainerNeuTraLAD(BaseTrainer):
         alpha = self.params.contamination_rate
         y = self.params.label
         loss_n, loss_a = self.model(sample)
-        loss_n =  weight.unsqueeze(1)*loss_n
+        #loss_n =  weight.unsqueeze(1)*loss_n
         loss = loss_n.mean()
         if self.params.rob and self.params.warmup < 1 + self.params.epochs:
             if self.params.rob_method == 'loe':
@@ -46,5 +44,4 @@ class TrainerNeuTraLAD(BaseTrainer):
                 loss = loss.mean()
             else:
                 loss = loss_n.mean()
-
         return loss

@@ -1,8 +1,11 @@
 import argparse
 import numpy as np
 import pandas as pd
+
+from models.duad import DUAD
 from models.neutralad import NeuTraLAD
 from models.shallow import IF, LOF
+from trainer.duad import TrainerDUAD
 from trainer.neutralad import TrainerNeuTraLAD
 from utils.params import Params
 from copy import deepcopy
@@ -17,6 +20,7 @@ logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, forma
 outputs = "outputs/"
 
 model_trainer_map = {
+    "duad": (TrainerDUAD, DUAD),
     "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
@@ -210,6 +214,8 @@ if __name__ == "__main__":
             trainer = deepcopy(tr)
             trainer.params.data = data[key]
             trainer.params.model = model
+            trainer.params.true_contamination_rate = contamination
+            trainer.params.contamination_rate = mis_cont
             trainer.params.weights = np.ones(trainer.params.data.shape[0])
             trainer.train()
             if trainer.name == "shallow":

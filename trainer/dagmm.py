@@ -21,8 +21,8 @@ class TrainerDAGMM(BaseTrainer):
         self.covs = None
 
 
-    def train_iter(self, sample, weight):
-        z_c, x_prime, _, z_r, gamma_hat = self.model(sample)
+    def train_iter(self, x_in, weight):
+        z_c, x_out, _, z_r, gamma_hat = self.model(x_in)
         phi, mu, cov_mat = self.compute_params(z_r, gamma_hat)
         energy_result, pen_cov_mat = self.estimate_sample_energy(
             z_r, phi, mu, cov_mat
@@ -30,10 +30,10 @@ class TrainerDAGMM(BaseTrainer):
         self.phi = phi.data
         self.mu = mu.data
         self.cov_mat = cov_mat
-        return self.loss(sample, weight, x_prime, energy_result, pen_cov_mat)
+        return self.loss(x_in, weight, x_out, energy_result, pen_cov_mat)
 
-    def loss(self, x, w, x_prime, energy, pen_cov_mat):
-        rec_err = (w.unsqueeze(1) * (x - x_prime) ** 2).sum(axis=-1).mean()
+    def loss(self, x_in, weight, x_out, energy, pen_cov_mat):
+        rec_err = (weight.unsqueeze(1) * (x_in - x_out) ** 2).sum(axis=-1).mean()
         return rec_err + self.lamb_1 * energy + self.lamb_2 * pen_cov_mat
 
     def test(self, data):

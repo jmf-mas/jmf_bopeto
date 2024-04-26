@@ -7,7 +7,6 @@ from sklearn.mixture import GaussianMixture
 from trainer.dataset import TabularDataset
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler, Sampler, Subset
 
-
 class TrainerDUAD:
 
     def __init__(self, params):
@@ -16,15 +15,8 @@ class TrainerDUAD:
         self.model = self.params.model
         self.model.to(params.device)
         self.metric_hist = []
-        self.r = params.r
-        self.p = params.p
-        self.p0 = params.p0
         self.name = "duad"
-        self.num_cluster = params.num_cluster
-        self.lr = params.learning_rate
-        self.n_epochs = params.epochs
-        self.device = params.device
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr,weight_decay=params.weight_decay)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self.params.learning_rate,weight_decay=params.weight_decay)
         self.criterion = nn.MSELoss()
         self.dm = DataManager(params)
 
@@ -79,8 +71,8 @@ class TrainerDUAD:
         L_old = [-1]
         reev_count = 0
         while len(set(L_old).difference(set(L))) <= 10 and reev_count < REEVAL_LIMIT:
-            for epoch in range(self.n_epochs):
-                if (epoch + 1) % self.r == 0:
+            for epoch in range(self.params.epochs):
+                if (epoch + 1) % self.params.r == 0:
                     self.model.eval()
                     L_old = deepcopy(L)
                     with torch.no_grad():
@@ -91,7 +83,7 @@ class TrainerDUAD:
                         X_loader = self.dm.get_init_train_loader()
                         for i, X_i in enumerate(X_loader, 0):
                             indices.append(X_i[2])
-                            train_inputs = X_i[0].to(self.device).float()
+                            train_inputs = X_i[0].to(self.params.device).float()
                             code, X_prime, Z_r = self.model(train_inputs)
                             Z_i = torch.cat([code, Z_r.unsqueeze(-1)], axis=1)
                             Z.append(Z_i)
@@ -105,7 +97,7 @@ class TrainerDUAD:
 
                         # plot_2D_latent(Z.cpu(), y)
 
-                        selection_mask = self.re_evaluation(Z.cpu(), self.p, self.num_cluster)
+                        selection_mask = self.re_evaluation(Z.cpu(), self.params.p, self.params.num_cluster)
                         selected_indices = indices[selection_mask]
                         y_s = y[selection_mask.cpu().numpy()]
 
@@ -129,7 +121,7 @@ class TrainerDUAD:
                     loss = 0
                     with trange(len(train_ldr)) as t:
                         for i, X_i in enumerate(train_ldr, 0):
-                            train_inputs = X_i[0].to(self.device).float()
+                            train_inputs = X_i[0].to(self.params.device).float()
                             loss += self.train_iter(train_inputs)
                             mean_loss = loss / (i + 1)
                             t.set_postfix(loss='{:.3f}'.format(mean_loss))

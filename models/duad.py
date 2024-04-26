@@ -6,10 +6,6 @@ from .base import BaseModel
 class DUAD(BaseModel):
     def __init__(self, params):
         self.params = params
-        self.p0 = params.p0
-        self.p = params.p
-        self.r = params.r
-        self.latent_dim = params.ae_latent_dim
         self.name = "duad"
         self.ae = None
         super(DUAD, self).__init__(params)
@@ -20,10 +16,10 @@ class DUAD(BaseModel):
             (self.in_features, 60, nn.Tanh()),
             (60, 30, nn.Tanh()),
             (30, 10, nn.Tanh()),
-            (10, self.latent_dim, None)
+            (10, self.params.ae_latent_dim, None)
         ]
         dec_layers = [
-            (self.latent_dim, 10, nn.Tanh()),
+            (self.params.ae_latent_dim, 10, nn.Tanh()),
             (10, 30, nn.Tanh()),
             (30, 60, nn.Tanh()),
             (60, self.in_features, None)

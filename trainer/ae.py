@@ -1,5 +1,5 @@
 from torch.cuda.amp import GradScaler, autocast
-from .base import BaseTrainer
+from .base import BaseTrainer, weighted_loss
 from .dataset import TabularDataset
 import numpy as np
 import torch
@@ -36,7 +36,7 @@ class Trainer:
                     noisy_data = add_noise(data)
                     with torch.cuda.amp.autocast():
                         outputs = self.params.model(data)
-                        loss = (weight.unsqueeze(1)*(outputs - data) ** 2).sum(axis=-1).mean()
+                        loss  = weighted_loss(data, outputs, weight)
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
@@ -66,13 +66,13 @@ class TrainerAE(BaseTrainer):
         self.model = self.params.model
         super(TrainerAE, self).__init__(params)
 
-    def train_iter(self, X, w):
-        outputs = self.model(X)[1]
-        loss = (w.unsqueeze(1) * (outputs - X) ** 2).sum(axis=-1).mean()
+    def train_iter(self, x_in, weights):
+        x_out = self.model(x_in)[1]
+        loss = weighted_loss(x_in, x_out, weights)
         return loss
-    def score(self, sample):
-        _, X_prime = self.model(sample)
-        return ((sample - X_prime) ** 2).sum(axis=1)
+    def score(self, x_in):
+        _, x_out = self.model(x_in)
+        return ((x_in - x_out) ** 2).sum(axis=1)
 
 
 def add_noise(data, noise_factor=0.5):

@@ -14,8 +14,8 @@ class BOPETO:
         dynamics_scores = self.sdc()
         n = len(dynamics_scores)
         target = ["synthetic" if self.params.dynamics[i, -1] == 2 else "training" for i in range(n)]
-        db = pd.DataFrame(data={'sample': range(n), self.params.metric: dynamics_scores, "class": target})
-        values = db[self.params.metric].values.reshape(-1, 1)
+        db = pd.DataFrame(data={'sample': range(n), "sdc": dynamics_scores, "class": target})
+        values = db["sdc"].values.reshape(-1, 1)
         detector = IsolationForest(n_estimators=50, random_state=42)
         y_pred = detector.fit_predict(values)
         anomaly_scores = detector.decision_function(values)

@@ -30,19 +30,19 @@ class Trainer:
 
             with trange(len(data_loader)) as t:
                 for batch in data_loader:
-                    data = batch['data'].to(self.params.device)
+                    x_in = batch['data'].to(self.params.device)
                     weight = batch['weight'].to(self.params.device)
                     optimizer.zero_grad()
-                    noisy_data = add_noise(data)
+                    x_in = add_noise(x_in)
                     with torch.cuda.amp.autocast():
-                        outputs = self.params.model(data)
-                        loss  = weighted_loss(data, outputs, weight)
+                        outputs = self.params.model(x_in)
+                        loss  = weighted_loss(x_in, outputs, weight)
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
                     epoch_loss += loss.item()
                     t.set_postfix(
-                        loss='{:.4f}'.format(epoch_loss / counter),
+                        loss='{:.6f}'.format(epoch_loss / counter),
                         epoch=epoch + 1
                     )
                     t.update()

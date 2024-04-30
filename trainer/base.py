@@ -116,15 +116,16 @@ class TrainerBaseShallow(ABC):
         self.name = "shallow"
 
     def train(self):
-        self.params.model.clf.fit(self.params.data[self.params.weights==1, :-1])
+        self.params.model.clf.fit(self.params.data[self.params.weights == 1, :-1])
 
     def score(self, sample):
         return self.params.model.clf.predict(sample)
 
-    def test(self, X):
-        score = self.score(X)
+    def test(self, sample):
+        score = self.score(sample)
         y_pred = np.where(score == 1, 0, score)
         return np.where(y_pred == -1, 1, y_pred)
+
     def get_params(self) -> dict:
         return {
             **self.model.get_params()

@@ -31,7 +31,7 @@ class Params:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = None
         self.dropout = 0
-        self.novelty = False
+        self.novelty = True
         # dagmm
         self.lambda_1 = 0.005
         self.lambda_2 =  0.1

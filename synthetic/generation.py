@@ -12,8 +12,13 @@ class FGM:
         self.data = torch.tensor(self.params.data[:, :-1], dtype=torch.float32)
         torch.cuda.empty_cache()
     def generate(self):
-        weights = np.ones(self.params.fragment.shape[0])
-        dataset = TabularDataset(self.params.fragment, weights)
+        boundary = (Boundary(self.params).generate())
+        fragment = np.vstack((self.params.fragment[:, :-1], boundary))
+        targets = 2*np.ones(fragment.shape[0])
+        targets = targets.reshape(-1, 1)
+        fragment = np.hstack((fragment, targets))
+        weights = np.ones(fragment.shape[0])
+        dataset = TabularDataset(fragment, weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         optimizer = torch.optim.Adam(self.params.model.parameters(), lr=self.params.learning_rate)
@@ -42,14 +47,12 @@ class FGM:
                 adversarial_examples = perturbed_outputs
             else:
                 adversarial_examples = np.vstack((adversarial_examples, perturbed_outputs))
-        boundary = (Boundary(self.params).generate())
-        adversarial_examples = np.vstack((adversarial_examples, boundary))
         return adversarial_examples
 
 class Boundary:
 
     def __init__(self, params):
-        self.gamma = 0.15
+        self.gamma = 0.2
         self.X = params.data[:, :-1]
     def generate(self):
         f = PCA(n_components=1)

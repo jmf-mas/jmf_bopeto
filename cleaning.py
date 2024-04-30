@@ -55,7 +55,7 @@ if __name__ == "__main__":
             utils.params.data = utils.contaminate(in_dist, oo_dist)
             utils.params.weights = np.ones(utils.params.data.shape[0])
             utils.params.set_model()
-            #training
+            # training
             print("sub-optimal training ...")
             _ = utils.initial_train()
             before = contamination(utils.params.data)
@@ -63,7 +63,7 @@ if __name__ == "__main__":
             data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
             print("synthetic data generation ...")
             N = len(utils.params.data)
-            M = int(np.ceil(0.15 * N))
+            M = int(np.ceil(0.1 * N))
             utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
             synthetic = utils.generate_synthetic_data()
             utils.params.update_data(synthetic)
@@ -82,8 +82,9 @@ if __name__ == "__main__":
             weights, indices = b.refine()
             refined_data = utils.params.data[indices]
             after = contamination(refined_data)
-            data[params.dataset_name + "_train_bopeto_"+ str(before[1])] = weights
+            data[params.dataset_name + "_train_bopeto_" + str(before[1])] = weights
             cleaning.append([before[0], after[0], before[1], after[1]])
+            print("contamination from ", before[1], "to", after[1], "--size from", before[0], "to", after[0])
         except RuntimeError as e:
             logging.error(
                 "Error for Bopeto cleaning on {} and contamination rate {}: {} ...".format(

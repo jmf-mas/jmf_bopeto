@@ -1,7 +1,6 @@
 import gzip
 import pickle
 from pathlib import Path
-
 import torch
 from abc import abstractmethod, ABC
 from torch import nn

@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 from abc import ABC, abstractmethod
-from typing import Union
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
@@ -74,7 +73,7 @@ class BaseTrainer(ABC):
 
                     epoch_loss += loss.item()
                     t.set_postfix(
-                        loss='{:.3f}'.format(epoch_loss / counter),
+                        loss='{:.8f}'.format(epoch_loss / counter),
                         epoch=epoch + 1
                     )
                     t.update()

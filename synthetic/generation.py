@@ -1,8 +1,8 @@
 
 from sklearn.decomposition import PCA
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler
 from trainer.dataset import TabularDataset
 import numpy as np
 
@@ -16,7 +16,7 @@ class FGM:
         dataset = TabularDataset(self.params.fragment, weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
-        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=self.params.learning_rate)
         scaler = GradScaler()
 
         self.params.model.eval()
@@ -35,19 +35,21 @@ class FGM:
             scaler.update()
 
             outputs = self.params.model(data)
-            perturbed_inputs = outputs  + np.random.uniform(0, 0.1, 1)[0] * outputs  # FGSM perturbation
+            perturbed_inputs = outputs + np.random.uniform(0, 0.1, 1)[0] * outputs  # FGSM perturbation
             perturbed_outputs = self.params.model(perturbed_inputs)
             perturbed_outputs = perturbed_outputs.cpu().detach()
-            if len(adversarial_examples)==0:
-                adversarial_examples =  perturbed_outputs
+            if len(adversarial_examples) == 0:
+                adversarial_examples = perturbed_outputs
             else:
                 adversarial_examples = np.vstack((adversarial_examples, perturbed_outputs))
+        boundary = (Boundary(self.params).generate())
+        adversarial_examples = np.vstack((adversarial_examples, boundary))
         return adversarial_examples
 
-class JMF:
+class Boundary:
 
     def __init__(self, params):
-        self.gamma = params.gamma
+        self.gamma = 0.15
         self.X = params.data[:, :-1]
     def generate(self):
         f = PCA(n_components=1)

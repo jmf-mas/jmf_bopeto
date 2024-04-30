@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from torch.nn import Parameter
-
 from .base import BaseModel
 
 

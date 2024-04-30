@@ -1,7 +1,7 @@
 from sklearn import metrics as sk_metrics
 import numpy as np
 from trainer.ae import Trainer
-from synthetic.generation import JMF, FGM
+from synthetic.generation import FGM
 import re
 
 class Utils:

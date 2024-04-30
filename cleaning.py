@@ -63,7 +63,7 @@ if __name__ == "__main__":
             data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
             print("synthetic data generation ...")
             N = len(utils.params.data)
-            M = int(np.ceil(0.3 * N))
+            M = int(np.ceil(0.15 * N))
             utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
             synthetic = utils.generate_synthetic_data()
             utils.params.update_data(synthetic)

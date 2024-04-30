@@ -2,7 +2,6 @@ import torch.nn as nn
 from .ae import AEDetecting as AE
 from .base import BaseModel
 
-
 class DUAD(BaseModel):
     def __init__(self, params):
         self.params = params

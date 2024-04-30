@@ -36,13 +36,13 @@ class Trainer:
                     x_in = add_noise(x_in)
                     with torch.cuda.amp.autocast():
                         outputs = self.params.model(x_in)
-                        loss  = weighted_loss(x_in, outputs, weight)
+                        loss = weighted_loss(x_in, outputs, weight)
                     scaler.scale(loss).backward()
                     scaler.step(optimizer)
                     scaler.update()
                     epoch_loss += loss.item()
                     t.set_postfix(
-                        loss='{:.6f}'.format(epoch_loss / counter),
+                        loss='{:.8f}'.format(epoch_loss / counter),
                         epoch=epoch + 1
                     )
                     t.update()

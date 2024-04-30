@@ -1,4 +1,3 @@
-from models.alad import ALAD
 from .base import BaseTrainer
 from .dataset import TabularDataset
 import torch

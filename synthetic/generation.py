@@ -40,7 +40,7 @@ class FGM:
             scaler.update()
 
             outputs = self.params.model(data)
-            perturbed_inputs = outputs + np.random.uniform(0, 0.1, 1)[0] * outputs  # FGSM perturbation
+            perturbed_inputs = outputs + np.random.uniform(0.001, 0.1, 1)[0] * outputs  # FGSM perturbation
             perturbed_outputs = self.params.model(perturbed_inputs)
             perturbed_outputs = perturbed_outputs.cpu().detach()
             if len(adversarial_examples) == 0:

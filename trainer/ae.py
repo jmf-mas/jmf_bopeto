@@ -1,4 +1,3 @@
-from torch.cuda.amp import GradScaler, autocast
 from .base import BaseTrainer, weighted_loss
 from .dataset import TabularDataset
 import numpy as np
@@ -17,8 +16,7 @@ class Trainer:
     def train(self, to_save=False):
         dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
-        scaler = GradScaler()
+        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=self.params.learning_rate)
         self.params.model.to(self.params.device)
         self.data = self.data.to(self.params.device)
         reconstruction_errors = []
@@ -37,9 +35,8 @@ class Trainer:
                     with torch.cuda.amp.autocast():
                         outputs = self.params.model(x_in)
                         loss = weighted_loss(x_in, outputs, weight)
-                    scaler.scale(loss).backward()
-                    scaler.step(optimizer)
-                    scaler.update()
+                    loss.backward()
+                    optimizer.step()
                     epoch_loss += loss.item()
                     t.set_postfix(
                         loss='{:.8f}'.format(epoch_loss / counter),

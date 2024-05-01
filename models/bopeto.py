@@ -21,15 +21,15 @@ class BOPETO:
         anomaly_scores = detector.decision_function(values)
         ood = anomaly_scores[y_pred == -1]
         in_ = anomaly_scores[y_pred == 1]
-        threshold = (np.max(ood) + np.min(in_)) / 2
-        threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])
+        # threshold = (np.max(ood) + np.min(in_)) / 2
+        threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])  # 20 30 before 60 70
         y_pred = anomaly_scores >= threshold
-        indices = list(db[(y_pred==1) & (db["class"] != "synthetic")].index)
+        indices = list(db[(y_pred == 1) & (db["class"] != "synthetic")].index)
         hard_weights = y_pred.astype(int).reshape(-1, 1)
         scaler = MinMaxScaler(feature_range=(0, 1))
         soft_weights = scaler.fit_transform(anomaly_scores.reshape(-1, 1))
-        soft_weights[hard_weights==1] = 1
+        soft_weights[hard_weights == 1] = 1
         weights = np.hstack((hard_weights, soft_weights))
-        training_indices =  list(db[db["class"] != "synthetic"].index)
+        training_indices = list(db[db["class"] != "synthetic"].index)
         return weights[training_indices], indices
 

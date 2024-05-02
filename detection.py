@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
-    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=50)
+    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=200)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')

@@ -20,12 +20,7 @@ class IF(BaseShallowModel):
 class OCSVM(BaseShallowModel):
     def __init__(self, params):
         super(OCSVM, self).__init__(params)
-        self.clf = OneClassSVM(
-            kernel="rbf",
-            gamma="scale",
-            shrinking=False,
-            nu=0.1
-        )
+        self.clf = OneClassSVM(kernel="rbf", gamma="scale", shrinking=False,  nu=0.1)
         self.name = "OCSVM"
 
     def get_params(self) -> dict:

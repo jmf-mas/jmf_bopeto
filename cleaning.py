@@ -37,7 +37,6 @@ if __name__ == "__main__":
     splitter = Splitter(params.dataset_name)
 
     data = splitter.split()
-
     rates = np.linspace(0, 1, params.num_contamination_subsets)
     cleaning = []
     in_dist = data[params.dataset_name + "_train"]

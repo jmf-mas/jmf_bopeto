@@ -76,7 +76,7 @@ if __name__ == "__main__":
             utils.params.set_model()
             dynamics = utils.get_reconstruction_errors()
             utils.params.dynamics = np.column_stack((dynamics, y))
-            np.savetxt(outputs+utils.params.model.name+'_plot.csv', utils.params.dynamics, delimiter=',')
+            np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
             dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
             utils.params.dynamics = dynamics
             b = BOPETO(utils.params)

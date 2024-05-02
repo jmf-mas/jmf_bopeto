@@ -60,7 +60,6 @@ if __name__ == "__main__":
             _ = utils.initial_train()
             before = contamination(utils.params.data)
             cont = before[1]
-            data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data
             print("synthetic data generation ...")
             N = len(utils.params.data)
             M = int(np.ceil(0.1 * N))
@@ -69,13 +68,15 @@ if __name__ == "__main__":
             utils.params.update_data(synthetic)
             utils.params.weights = np.ones(utils.params.data.shape[0])
             np.savetxt(utils.params.dataset_name + '.csv', utils.params.data, delimiter=',')
+            cond = utils.params.data[:, -1] != 2
+            data[params.dataset_name + "_train_contamination_" + str(before[1])] = utils.params.data[cond]
             # filtering
             y = utils.params.data[:, -1]
             print("getting dynamics ...")
             utils.params.set_model()
             dynamics = utils.get_reconstruction_errors()
             utils.params.dynamics = np.column_stack((dynamics, y))
-            np.savetxt(outputs+utils.params.model.name+'.csv', utils.params.dynamics, delimiter=',')
+            np.savetxt(outputs+utils.params.model.name+'_plot.csv', utils.params.dynamics, delimiter=',')
             dynamics = np.loadtxt(outputs+utils.params.model.name+'.csv', delimiter=',')
             utils.params.dynamics = dynamics
             b = BOPETO(utils.params)

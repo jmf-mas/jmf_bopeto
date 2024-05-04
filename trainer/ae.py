@@ -54,6 +54,7 @@ class Trainer:
                     reconstruction_errors =  errors
                 else:
                     reconstruction_errors = np.column_stack((reconstruction_errors, errors))
+
         return reconstruction_errors
 
 class TrainerAE(BaseTrainer):

@@ -63,6 +63,10 @@ class Params:
         self.rob_method = "loe"
         self.label = None
 
+        # early stop
+        self.patience = 5
+        self.min_delta = 0.0
+
     def set_model(self):
         self.id = self.dataset_name+"_"+"_ae_rate_"+str(self.rate)
         self.model = AECleaning(self)

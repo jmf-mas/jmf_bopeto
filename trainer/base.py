@@ -54,7 +54,8 @@ class BaseTrainer(ABC):
     def train(self):
         dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-
+        best_val_loss = np.Inf
+        current_patience = self.params.patience
         self.model.train()
         for epoch in range(self.params.epochs):
             epoch_loss = 0.0
@@ -79,7 +80,21 @@ class BaseTrainer(ABC):
                     t.update()
                     counter += 1
 
+            val_loss = self.validate(self.params.val)
+            if val_loss < best_val_loss - self.params.min_delta:
+                best_val_loss = val_loss
+                current_patience = self.params.patience
+            else:
+                current_patience -= 1
+                if current_patience == 0:
+                    print("Early stopping.")
+                    break
+
         self.after_training()
+
+    def validate(self, data):
+        _, scores = self.test(data)
+        return np.mean(scores)
 
     def test(self, data):
         test_set = TabularDataset(data, np.ones(data.shape[0]))

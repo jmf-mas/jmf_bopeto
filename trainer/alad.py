@@ -6,6 +6,7 @@ from tqdm import trange
 from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+import numpy as np
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -74,6 +75,8 @@ class TrainerALAD(BaseTrainer):
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         self.model.train()
+        best_val_loss = np.Inf
+        current_patience = self.params.patience
         for epoch in range(self.n_epochs):
             ge_losses, d_losses = 0, 0
             with trange(len(data_loader)) as t:
@@ -107,6 +110,16 @@ class TrainerALAD(BaseTrainer):
                         loss_ge='{:05.4f}'.format(loss_ge),
                     )
                     t.update()
+
+            val_loss = self.validate(self.params.val)
+            if val_loss < best_val_loss - self.params.min_delta:
+                best_val_loss = val_loss
+                current_patience = self.params.patience
+            else:
+                current_patience -= 1
+                if current_patience == 0:
+                    print("Early stopping.")
+                    break
 
     def eval(self, dataset: DataLoader):
         self.model.eval()

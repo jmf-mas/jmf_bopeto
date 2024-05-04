@@ -4,6 +4,7 @@ from trainer.ae import Trainer
 from synthetic.generation import FGM
 import re
 
+
 class Utils:
     def __init__(self, params):
         self.params = params
@@ -25,11 +26,12 @@ class Utils:
     def contaminate(self, in_dist, oo_dist):
         data = np.vstack((in_dist, oo_dist))
         np.random.shuffle(data)
-        self.params.rate = oo_dist.shape[0]/(in_dist.shape[0]+oo_dist.shape[0])
+        self.params.rate = oo_dist.shape[0] / (in_dist.shape[0] + oo_dist.shape[0])
         return data
 
     def optimal_threshold(self, model):
         pass
+
 
 def compute_metrics(val_score, y_val, thresh, pos_label=1):
     y_pred = (val_score >= thresh).astype(int)
@@ -45,6 +47,7 @@ def compute_metrics(val_score, y_val, thresh, pos_label=1):
 
     return accuracy, precision, recall, f_score, roc, avgpr, cm
 
+
 def compute_metrics_binary(y_pred, y_val, pos_label=1):
     y_true = y_val.astype(int)
 
@@ -55,6 +58,8 @@ def compute_metrics_binary(y_pred, y_val, pos_label=1):
     cm = sk_metrics.confusion_matrix(y_true, y_pred, labels=[1, 0])
 
     return accuracy, precision, recall, f_score, cm
+
+
 def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
     ratio = 100 * sum(y_val == 0) / len(y_val)
     q = np.linspace(ratio - 5, min(ratio + 5, 100), nq)
@@ -93,10 +98,12 @@ def estimate_optimal_threshold(val_score, y_val, pos_label=1, nq=100):
         "Quantile_star": qis[arm]
     }
 
+
 def resolve_model_trainer(model_trainer_map, model_name):
     t, m = model_trainer_map.get(model_name, None)
     assert t, "Model %s not found" % model_name
     return t, m
+
 
 def get_contamination(key, model_name):
     if "bopeto" in key:
@@ -108,11 +115,14 @@ def get_contamination(key, model_name):
     if len(splits) >= 3:
         cont = float("." + splits[-1].split(".")[1])
     return cont, model_name_
+
+
 def contamination(data):
     in_dist = len(data[data[:, -1] == 0])
     oo_dist = len(data[data[:, -1] == 1])
     n = in_dist + oo_dist
-    return n, oo_dist/n
+    return n, oo_dist / n
+
 
 def compute_metrics(test_score, y_test, thresh, pos_label=1):
     y_pred = (test_score >= thresh).astype(int)
@@ -128,6 +138,7 @@ def compute_metrics(test_score, y_test, thresh, pos_label=1):
 
     return accuracy, precision, recall, f_score, roc, avgpr, cm
 
+
 def _estimate_threshold_metrics(test_score, y_test, pos_label=1, nq=100, optimal=True):
     ratio = 100 * sum(y_test != pos_label) / len(y_test)
 
@@ -137,7 +148,7 @@ def _estimate_threshold_metrics(test_score, y_test, pos_label=1, nq=100, optimal
 
         return accuracy, precision, recall, f_score, roc, avgpr
 
-    print(f"Ratio of normal data:{round(ratio,2)}%")
+    print(f"Ratio of normal data:{round(ratio, 2)}%")
     q = np.linspace(max(ratio - 5, .1), min(ratio + 5, 100), nq)
     thresholds = np.percentile(test_score, q)
 
@@ -180,8 +191,3 @@ def find_match(strings, rate):
         if pattern.match(string):
             return string
     return None
-
-
-
-
-

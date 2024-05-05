@@ -1,7 +1,11 @@
 import argparse
 import numpy as np
 import pandas as pd
-from models.shallow import IF, LOF
+from models.duad import DUAD
+from models.neutralad import NeuTraLAD
+from models.shallow import IF, LOF, OCSVM
+from trainer.duad import TrainerDUAD
+from trainer.neutralad import TrainerNeuTraLAD
 from utils.params import Params
 from trainer.ae import TrainerAE
 from copy import deepcopy
@@ -15,7 +19,7 @@ from utils.utils import estimate_optimal_threshold, compute_metrics, compute_met
 from models.svdd import DeepSVDD
 from models.alad import ALAD
 from models.dsebm import DSEBM
-from models.ae import AEDetecting
+from models.ae import AEDetecting, AECleaning
 from models.dagmm import DAGMM
 import logging
 
@@ -26,7 +30,7 @@ logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='
 
 outputs = "outputs/"
 
-model_trainer_map = {
+model_bopeto_map = {
     "alad": (TrainerALAD, ALAD),
     "dagmm": (TrainerDAGMM, DAGMM),
     "dsebm": (TrainerDSEBM, DSEBM),
@@ -34,6 +38,23 @@ model_trainer_map = {
     "lof": (TrainerBaseShallow, LOF),
     "ae": (TrainerAE, AEDetecting),
     "svdd": (TrainerSVDD, DeepSVDD),
+}
+
+model_iad_map = {
+    "ae": (TrainerAE, AEDetecting),
+    "svdd": (TrainerSVDD, DeepSVDD),
+}
+
+model_cleaning_map = {
+    "ae": (TrainerAE, AECleaning)
+}
+
+model_impact_map = {
+    "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
+    "duad": (TrainerDUAD, DUAD),
+    "ocsvm": (TrainerBaseShallow, OCSVM),
+    "if": (TrainerBaseShallow, IF),
+    "lof": (TrainerBaseShallow, LOF)
 }
 
 if __name__ == "__main__":
@@ -47,6 +68,7 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
     parser.add_argument('--model', type=str, default='AE', help='model name')
     parser.add_argument('--cleaning', type=str, default='hard', help='type of cleaning (hard or soft)')
+    parser.add_argument('--mode', type=str, default='bopeto', help='running modes: cleaning, bopeto, iad or impact')
 
     #DaGMM
     parser.add_argument('--gmm_k', type=int, default=4)
@@ -193,6 +215,7 @@ if __name__ == "__main__":
     params.early_stopping = configs['early_stopping']
     params.dataset_name = configs['dataset']
     params.cleaning = configs['cleaning']
+    params.mode = configs['mode']
     data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
     keys = list(data.keys())
     filter_keys = list(filter(lambda s: "train_" in s, keys))
@@ -202,64 +225,75 @@ if __name__ == "__main__":
     performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy","precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
 
+    if params.mode == "bopeto":
+        model_trainer_map = model_bopeto_map
+    elif params.mode == "iad":
+        params.cleaning = "hard"
+        model_trainer_map = model_iad_map
+    elif params.mode == "impact":
+        model_trainer_map = model_impact_map
+    else:
+        model_trainer_map = model_cleaning_map
+
     tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
     mo = mo(params)
     params.model = mo
     tr = tr(params)
     n_cases = len(filter_keys)
+    print("running mode: {}".format(params.mode))
     for i, key in enumerate(filter_keys):
-        try:
-            print("{}/{}: training on {}".format(i+1, n_cases, key))
-            model = deepcopy(mo)
-            model.params.data = data[key]
-            trainer = deepcopy(tr)
-            contamination, model_name_ = get_contamination(key, params.model_name)
-            if "contamination" in key:
-                trainer.params.data = data[key]
+        #try:
+        print("{}/{}: training on {}".format(i+1, n_cases, key))
+        model = deepcopy(mo)
+        model.params.data = data[key]
+        trainer = deepcopy(tr)
+        contamination, model_name_ = get_contamination(key, params.model_name)
+        if "contamination" in key:
+            trainer.params.data = data[key]
+            trainer.params.weights = np.ones(trainer.params.data.shape[0])
+        else:
+            match = find_match(filter_keys, contamination)
+            if not match:
+                break
+            trainer.params.data = data[match]
+            weights = data[key]
+            if trainer.params.cleaning == "hard":
+                weight = weights[:, 0]
+                trainer.params.data = trainer.params.data[weight==1]
                 trainer.params.weights = np.ones(trainer.params.data.shape[0])
             else:
-                match = find_match(filter_keys, contamination)
-                if not match:
-                    break
-                trainer.params.data = data[match]
-                weights = data[key]
-                if trainer.params.cleaning == "hard":
-                    weight = weights[:, 0]
-                    trainer.params.data = trainer.params.data[weight==1]
-                    trainer.params.weights = np.ones(trainer.params.data.shape[0])
-                else:
-                    trainer.params.weights = weights[:, 1]
+                trainer.params.weights = weights[:, 1]
 
-            trainer.params.model = model
-            trainer.train()
+        trainer.params.model = model
+        trainer.train()
 
-            if trainer.name == "shallow":
-                X, y_test = params.test[:, :-1], params.test[:, -1]
-                y_pred = trainer.test(X)
-                metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
-            else:
-                y_val, score_val = trainer.test(params.val)
-                y_test, score_test = trainer.test(params.test)
-                threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
-                threshold = threshold["Thresh_star"]
-                metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
+        if trainer.name == "shallow":
+            X, y_test = params.test[:, :-1], params.test[:, -1]
+            y_pred = trainer.test(X)
+            metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
+        else:
+            y_val, score_val = trainer.test(params.val)
+            y_test, score_test = trainer.test(params.test)
+            threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
+            threshold = threshold["Thresh_star"]
+            metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
 
-            perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, metrics[:4])
-        except RuntimeError as e:
-            logging.error(
-                "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
-                                                                                               params.model_name,
-                                                                                               contamination, e))
-        except Exception as e:
-            logging.error(
-                "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
-                    params.dataset_name,
-                    params.model_name,
-                    contamination, e))
-
-    performances.to_csv("outputs/performances_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
+        perf = [params.dataset_name, contamination, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
+        performances.loc[len(performances)] = perf
+        print("performance on", key, metrics[:4])
+        # except RuntimeError as e:
+        #     logging.error(
+        #         "OoD detection on {} with {} and contamination rate {} unfinished caused by {} ...".format(params.dataset_name,
+        #                                                                                        params.model_name,
+        #                                                                                        contamination, e))
+        # except Exception as e:
+        #     logging.error(
+        #         "Error for OoD detection on {} with {} and contamination rate {}: {} ...".format(
+        #             params.dataset_name,
+        #             params.model_name,
+        #             contamination, e))
+    perf_path = "outputs/performances_"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
+    performances.to_csv(perf_path, header=True, index=False)
 
 
 

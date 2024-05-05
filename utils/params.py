@@ -9,6 +9,7 @@ class Params:
         self.rate = 0
         self.weights = None
         self.cleaning = "hard"
+        self.mode = "bopeto"
         self.num_contamination_subsets = 3
         self.patience = 10
         self.id = None

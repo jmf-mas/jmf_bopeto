@@ -193,12 +193,5 @@ def find_match(strings, rate):
     return None
 
 
-def get_weight(scores, tau=0.1):
-    s_min = np.min(scores)
-    s_max = np.max(scores)
-    s_med = np.median(scores)
-    alpha = 1/(min(s_med - s_min, s_max - s_med)*tau)
-    beta = s_med
-    weight = 1 / (1 + np.exp(alpha*(scores - beta)))
-    return weight
+
 

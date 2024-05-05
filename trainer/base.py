@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-
+from copy import deepcopy
 from abc import ABC, abstractmethod
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
@@ -61,10 +61,18 @@ class BaseTrainer(ABC):
             epoch_loss = 0.0
             counter = 1
 
+            if self.params.mode == "iad" and epoch > 0:
+                _, scores = self.test(self.params.data)
+                weights = get_weight(scores, self.params.device)
+
             with trange(len(data_loader)) as t:
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
                     weight = batch['weight'].to(self.params.device)
+                    idx = batch['index']
+                    if self.params.mode == "iad" and epoch > 0:
+                        weight = weights[idx]
+
                     self.optimizer.zero_grad()
                     loss = self.train_iter(data, weight)
 
@@ -149,8 +157,19 @@ class TrainerBaseShallow(ABC):
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
 
+
 def weighted_loss(x_in, x_out, weights):
     mse = nn.MSELoss(reduction='none')
     loss = mse(x_in, x_out)
     return torch.mean(loss * weights.unsqueeze(1))
+
+
+def get_weight(scores, device, tau=0.1):
+    s_min = np.min(scores)
+    s_max = np.max(scores)
+    s_med = np.median(scores)
+    alpha = 1/(min(s_med - s_min, s_max - s_med)*tau)
+    beta = s_med
+    weight = 1 / (1 + np.exp(alpha*(scores - beta)))
+    return torch.tensor(weight).to(device)
 

@@ -1,10 +1,9 @@
 import argparse
 import numpy as np
 import pandas as pd
-
 from models.duad import DUAD
 from models.neutralad import NeuTraLAD
-from models.shallow import IF, LOF
+from models.shallow import IF, LOF, OCSVM
 from trainer.duad import TrainerDUAD
 from trainer.neutralad import TrainerNeuTraLAD
 from utils.params import Params
@@ -23,6 +22,7 @@ outputs = "outputs/"
 model_trainer_map = {
     "duad": (TrainerDUAD, DUAD),
     "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
+    "ocsvm": (TrainerBaseShallow, OCSVM),
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
 }

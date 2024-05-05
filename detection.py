@@ -1,9 +1,9 @@
 import argparse
 import numpy as np
 import pandas as pd
-from models.shallow import IF, LOF, OCSVM
+from models.shallow import IF, LOF
 from utils.params import Params
-from trainer.ae import  TrainerAE
+from trainer.ae import TrainerAE
 from copy import deepcopy
 from trainer.base import TrainerBaseShallow
 from trainer.dagmm import TrainerDAGMM
@@ -14,7 +14,7 @@ from utils.utils import estimate_optimal_threshold, compute_metrics, compute_met
     resolve_model_trainer, find_match
 from models.svdd import DeepSVDD
 from models.alad import ALAD
-from models.dsebm import  DSEBM
+from models.dsebm import DSEBM
 from models.ae import AEDetecting
 from models.dagmm import DAGMM
 import logging
@@ -32,7 +32,6 @@ model_trainer_map = {
     "dsebm": (TrainerDSEBM, DSEBM),
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
-    "ocsvm": (TrainerBaseShallow, OCSVM),
     "ae": (TrainerAE, AEDetecting),
     "svdd": (TrainerSVDD, DeepSVDD),
 }

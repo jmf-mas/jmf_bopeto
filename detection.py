@@ -229,6 +229,7 @@ if __name__ == "__main__":
         model_trainer_map = model_bopeto_map
     elif params.mode == "iad":
         params.cleaning = "hard"
+        filter_keys = list(filter(lambda s: "contamination_" in s, filter_keys))
         model_trainer_map = model_iad_map
     elif params.mode == "impact":
         model_trainer_map = model_impact_map

@@ -57,46 +57,66 @@ class BaseTrainer(ABC):
         best_val_loss = np.Inf
         current_patience = self.params.patience
         self.model.train()
-        for epoch in range(self.params.epochs):
-            epoch_loss = 0.0
-            counter = 1
+        A = []
+        for i in range(self.params.T):
+            for epoch in range(self.params.epochs):
+                epoch_loss = 0.0
+                counter = 1
 
-            if self.params.mode == "iad" and epoch > 0:
+                with trange(len(data_loader)) as t:
+                    for batch in data_loader:
+                        data = batch['data'].to(self.params.device)
+                        idx = batch['index']
+                        weight = batch['weight'].to(self.params.device)
+                        if self.params.mode == "iad" and i > 0:
+                            weight = weights[idx]
+
+                        self.optimizer.zero_grad()
+                        loss = self.train_iter(data, weight)
+
+                        # Backpropagation
+                        loss.backward()
+                        self.optimizer.step()
+
+                        epoch_loss += loss.item()
+                        t.set_postfix(
+                            round='{:.2f} %'.format(100*(i + 1) / self.params.T),
+                            loss='{:.8f}'.format(epoch_loss / counter),
+                            epoch=epoch + 1
+                        )
+                        t.update()
+                        counter += 1
+
+                val_loss = self.validate(self.params.val)
+                if val_loss < best_val_loss - self.params.min_delta:
+                    best_val_loss = val_loss
+                    current_patience = self.params.patience
+                else:
+                    current_patience -= 1
+                    if current_patience == 0:
+                        print("early stopping.")
+                        break
+
+            if self.params.mode == "iad":
                 _, scores = self.test(self.params.data)
                 weights = get_weight(scores, self.params.device)
+                indices = sorted(range(len(scores)), key=lambda x: scores[x])
+                A.append([deepcopy(self.model), indices])
 
-            with trange(len(data_loader)) as t:
-                for batch in data_loader:
-                    data = batch['data'].to(self.params.device)
-                    weight = batch['weight'].to(self.params.device)
-                    idx = batch['index']
-                    if self.params.mode == "iad" and epoch > 0:
-                        weight = weights[idx]
-
-                    self.optimizer.zero_grad()
-                    loss = self.train_iter(data, weight)
-
-                    # Backpropagation
-                    loss.backward()
-                    self.optimizer.step()
-
-                    epoch_loss += loss.item()
-                    t.set_postfix(
-                        loss='{:.8f}'.format(epoch_loss / counter),
-                        epoch=epoch + 1
-                    )
-                    t.update()
-                    counter += 1
-
-            val_loss = self.validate(self.params.val)
-            if val_loss < best_val_loss - self.params.min_delta:
-                best_val_loss = val_loss
-                current_patience = self.params.patience
-            else:
-                current_patience -= 1
-                if current_patience == 0:
-                    print("Early stopping.")
-                    break
+        n = int(np.ceil(len(self.params.data)/2))
+        best_round = np.Inf
+        for i in range(1, self.params.T):
+            previous_indices = A[i-1][-1]
+            first_half_prev = previous_indices[:n]
+            second_half_prev = previous_indices[n:]
+            current_indices = A[i][-1]
+            first_half_current = current_indices[:n]
+            second_half_current = current_indices[n:]
+            change_count = len(set(first_half_prev) - set(first_half_current))
+            change_count += len(set(second_half_prev) - set(second_half_current))
+            if change_count < best_round:
+                self.model = deepcopy(A[i][0])
+                best_round = change_count
 
         self.after_training()
 

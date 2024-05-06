@@ -22,7 +22,7 @@ class BOPETO:
         ood = anomaly_scores[y_pred == -1]
         in_ = anomaly_scores[y_pred == 1]
         threshold = (np.max(ood) + np.min(in_)) / 2
-        threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])  # 20 30 before 60 70
+        threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])
         y_pred = anomaly_scores >= threshold
         indices = list(db[(y_pred == 1) & (db["class"] != "synthetic")].index)
         hard_weights = y_pred.astype(int).reshape(-1, 1)

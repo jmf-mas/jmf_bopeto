@@ -54,11 +54,13 @@ class BaseTrainer(ABC):
     def train(self):
         dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-        best_val_loss = np.Inf
-        current_patience = self.params.patience
         self.model.train()
-        A = []
-        for i in range(self.params.T):
+        a = []
+        break_outer = False
+        max_round = self.params.T
+        for i in range(max_round):
+            best_val_loss = np.Inf
+            current_patience = self.params.patience
             for epoch in range(self.params.epochs):
                 epoch_loss = 0.0
                 counter = 1
@@ -95,27 +97,31 @@ class BaseTrainer(ABC):
                     current_patience -= 1
                     if current_patience == 0:
                         print("early stopping.")
+                        break_outer = True
                         break
 
             if self.params.mode == "iad":
                 _, scores = self.test(self.params.data)
                 weights = get_weight(scores, self.params.device)
                 indices = sorted(range(len(scores)), key=lambda x: scores[x])
-                A.append([deepcopy(self.model), indices])
+                a.append([deepcopy(self.model), indices])
+            if break_outer:
+                max_round = i + 1
+                break
 
         n = int(np.ceil(len(self.params.data)/2))
         best_round = np.Inf
-        for i in range(1, self.params.T):
-            previous_indices = A[i-1][-1]
+        for i in range(1, max_round):
+            previous_indices = a[i-1][-1]
             first_half_prev = previous_indices[:n]
             second_half_prev = previous_indices[n:]
-            current_indices = A[i][-1]
+            current_indices = a[i][-1]
             first_half_current = current_indices[:n]
             second_half_current = current_indices[n:]
             change_count = len(set(first_half_prev) - set(first_half_current))
             change_count += len(set(second_half_prev) - set(second_half_current))
             if change_count < best_round:
-                self.model = deepcopy(A[i][0])
+                self.model = deepcopy(a[i][0])
                 best_round = change_count
 
         self.after_training()
@@ -184,7 +190,7 @@ def weighted_loss(x_in, x_out, weights):
     return torch.mean(loss * weights.unsqueeze(1))
 
 
-def get_weight(scores, device, tau=0.1):
+def get_weight(scores, device, tau=0.25):
     s_min = np.min(scores)
     s_max = np.max(scores)
     s_med = np.median(scores)

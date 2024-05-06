@@ -229,7 +229,7 @@ if __name__ == "__main__":
         model_trainer_map = model_bopeto_map
     elif params.mode == "iad":
         params.cleaning = "hard"
-        filter_keys = list(filter(lambda s: "contamination_" in s, filter_keys))
+        #filter_keys = list(filter(lambda s: "contamination_" in s, filter_keys))
         model_trainer_map = model_iad_map
     elif params.mode == "impact":
         model_trainer_map = model_impact_map
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         #             params.dataset_name,
         #             params.model_name,
         #             contamination, e))
-    perf_path = "outputs/performances_"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
+    perf_path = "outputs/performances__"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
     performances.to_csv(perf_path, header=True, index=False)
 
 

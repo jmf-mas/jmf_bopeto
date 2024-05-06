@@ -196,6 +196,9 @@ def get_weight(scores, device, tau=0.25):
     s_med = np.median(scores)
     alpha = 1/(min(s_med - s_min, s_max - s_med)*tau)
     beta = s_med
-    weight = 1 / (1 + np.exp(alpha*(scores - beta)))
+    exponent = alpha*(scores - beta)
+    exponent = np.clip(exponent, a_min=0, a_max=5)
+    weight = 1 / (1 + np.exp(exponent))
+    weight = np.clip(weight, a_min=0, a_max=1)
     return torch.tensor(weight).to(device)
 

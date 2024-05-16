@@ -1,6 +1,5 @@
 import argparse
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from models.duad import DUAD
 from models.neutralad import NeuTraLAD

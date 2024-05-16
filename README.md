@@ -29,9 +29,15 @@ $ pip install -r requirements.txt
 Replace `[ENV_NAME]` with the name of your environment.
 
 Our model contains the following parameters:
-- `--batch-size`: size of a training batch (**required**)
-- `--dataset`: name of the selected dataset. Choices are `ciciot`, `credit`, `ecg`, `ids`, `kdd`, `kitsune` (**required**).
-- `-epochs`: number of training epochs (default=100)
+- `--batch_size`: size of a training batch (default=64)
+- `--dataset`: name of the selected dataset. Choices are `ciciot`, `credit`, `ecg`, `ids`, `kdd`, `kitsune` (default=kdd).
+- `--epochs`: number of training epochs (default=100)
+- `--learning_rate`: learning rate (default=0.001)
+- `--weight_decay`: weight decay (default=0.001)
+- `--mode`: running modes: cleaning, bopeto or iad (default=bopeto)
+- `--cleaning`: type of cleaning (hard or soft) (default=hard)
+- `--model`: anomaly detection model (svdd, ae, if, lof, alad, dsebm, dagmm) (default=svdd)
+- `--num_contamination_subsets`: number of contamination ratios to generate (default=10)
 Please note that datasets must be stored in `.npz`. 
 
 ## Example

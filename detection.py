@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from models.duad import DUAD
 from models.neutralad import NeuTraLAD
 from models.shallow import IF, LOF, OCSVM
@@ -25,10 +26,21 @@ import logging
 
 np.random.seed(42)
 
-logging.basicConfig(filename='logs/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+directory_model = "b_checkpoints/"
+directory_data = "b_data/"
+directory_output = "b_outputs/"
+directory_log = "b_logs/"
 
 
-outputs = "outputs/"
+def init():
+    Path(directory_model).mkdir(parents=True, exist_ok=True)
+    Path(directory_data).mkdir(parents=True, exist_ok=True)
+    Path(directory_output).mkdir(parents=True, exist_ok=True)
+    Path(directory_log).mkdir(parents=True, exist_ok=True)
+
+
+logging.basicConfig(filename=directory_log+'/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 model_bopeto_map = {
     "alad": (TrainerALAD, ALAD),
@@ -193,7 +205,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     configs = vars(args)
 
     gmm_k = configs['gmm_k']
@@ -296,7 +307,7 @@ if __name__ == "__main__":
         #             params.dataset_name,
         #             params.model_name,
         #             contamination, e))
-    perf_path = "outputs/performances_soft"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
+    perf_path = directory_output+"/performances_"+params.cleaning+"_"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
     performances.to_csv(perf_path, header=True, index=False)
 
 

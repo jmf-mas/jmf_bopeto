@@ -1,15 +1,15 @@
-# Bopeto: Unsupervised data cleaning for OoD detection
-This repository implements Bopeto method and collects different unsupervised machine learning algorithms to detect OoD instances.
+# Bopeto: Data cleaning for unsupervised anomaly detection
+This repository implements Bopeto method and collects different unsupervised machine learning algorithms for anomaly detection.
 ## Implemented models
-For OoD detection we have used the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
-- [x] [AE]()
-- [x] [ALAD]()
-- [x] [DAGMM]()
-- [x] [DeepSVDD]()
-- [x] [DSEBM]()
-- [x] [IsolationForest]()
-- [x] [LocalOutlierFactor]()
-- [x] [One-class SVM]()
+For unsupervised anomaly detection we have used the following models. The original implementations already available on GitHub.
+- [x] [AE](https://github.com/intrudetection/robevalanodetect)
+- [x] [ALAD](https://github.com/houssamzenati/Adversarially-Learned-Anomaly-Detection)
+- [x] [DAGMM](https://github.com/intrudetection/robevalanodetect)
+- [x] [DeepSVDD](https://github.com/lukasruff/Deep-SVDD)
+- [x] [DSEBM](https://github.com/intrudetection/robevalanodetect)
+- [x] [IsolationForest](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html)
+- [x] [LocalOutlierFactor](https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.LocalOutlierFactor.html)
+- [x] [One-class SVM](https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html)
 
 ## Dependencies
 A complete dependency list is available in requirements.txt.
@@ -44,9 +44,11 @@ Detecting anomalous instances using SVDD on the KDD dataset:
 ```
 $ python ad.py --dataset kdd --model svdd --mode bopeto
 ```
+<!--
 You can automate the whole process (data cleaning and anomaly detection) using the following
 ```
 $ chmod +x ad.sh
 $ ./ad.sh
 ```
+-->
 Make sure that your dataset is saved with a correct name as a .npz file with one key as your dataset name

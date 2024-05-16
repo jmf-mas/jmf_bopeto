@@ -1,4 +1,3 @@
-from models.alad import ALAD
 from .base import BaseTrainer
 from .dataset import TabularDataset
 import torch
@@ -7,6 +6,7 @@ from tqdm import trange
 from torch import optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+import numpy as np
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -39,7 +39,7 @@ class TrainerALAD(BaseTrainer):
             lr=self.lr, betas=(0.5, 0.999)
         )
 
-    def train_iter_dis(self, X):
+    def train_iter_dis(self, X, weight):
 
         # Labels
         y_true = Variable(torch.zeros(X.size(0), 1)).to(self.device)
@@ -71,22 +71,25 @@ class TrainerALAD(BaseTrainer):
         return loss_ge
 
     def train(self):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         self.model.train()
+        best_val_loss = np.Inf
+        current_patience = self.params.patience
         for epoch in range(self.n_epochs):
             ge_losses, d_losses = 0, 0
             with trange(len(data_loader)) as t:
 
                 for batch in data_loader:
                     data = batch['data'].to(self.params.device)
+                    weight = batch['weight'].to(self.params.device)
                     X_dis, X_gen = data, data.clone().to(self.device).float()
                     # Forward pass
 
                     # Cleaning gradients
                     self.optim_d.zero_grad()
-                    loss_d = self.train_iter_dis(X_dis)
+                    loss_d = self.train_iter_dis(X_dis, weight)
                     # Backward pass
                     loss_d.backward()
                     self.optim_d.step()
@@ -107,6 +110,16 @@ class TrainerALAD(BaseTrainer):
                         loss_ge='{:05.4f}'.format(loss_ge),
                     )
                     t.update()
+
+            val_loss = self.validate(self.params.val)
+            if val_loss < best_val_loss - self.params.min_delta:
+                best_val_loss = val_loss
+                current_patience = self.params.patience
+            else:
+                current_patience -= 1
+                if current_patience == 0:
+                    print("Early stopping.")
+                    break
 
     def eval(self, dataset: DataLoader):
         self.model.eval()

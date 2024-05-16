@@ -6,6 +6,7 @@ outputs = "outputs/"
 
 def plot_segmented_one_line(identifier, db, threshold, metric):
     sample_df = db.sample(n=1000)
+    print(metric)
     sns.scatterplot(data=sample_df, x="sample", y=metric, hue='class', palette=palette)
     plt.axhline(y=threshold, color='r', linestyle='-')
     plt.savefig(outputs + identifier+".pdf", dpi=300)

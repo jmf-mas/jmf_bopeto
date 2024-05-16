@@ -1,11 +1,9 @@
 
 import numpy as np
 import torch
-
 from .ae import AEDetecting
 from .base import BaseModel
 from torch import nn
-
 from .gmm import GMM
 
 

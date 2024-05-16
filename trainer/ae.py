@@ -1,5 +1,4 @@
-from torch.cuda.amp import GradScaler, autocast
-from .base import BaseTrainer
+from .base import BaseTrainer, weighted_loss
 from .dataset import TabularDataset
 import numpy as np
 import torch
@@ -15,34 +14,32 @@ class Trainer:
         torch.cuda.empty_cache()
 
     def train(self, to_save=False):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=1e-3)
-        scaler = GradScaler()
+        optimizer = torch.optim.Adam(self.params.model.parameters(), lr=self.params.learning_rate)
         self.params.model.to(self.params.device)
         self.data = self.data.to(self.params.device)
         reconstruction_errors = []
-
-        for epoch in range(self.params.epochs):
+        n_epochs = 10
+        for epoch in range(n_epochs):
             self.params.model.train()
             epoch_loss = 0.0
             counter = 1
 
             with trange(len(data_loader)) as t:
                 for batch in data_loader:
-                    data = batch['data'].to(self.params.device)
+                    x_in = batch['data'].to(self.params.device)
+                    weight = batch['weight'].to(self.params.device)
                     optimizer.zero_grad()
-                    noisy_data = add_noise(data)
+                    x_in = add_noise(x_in)
                     with torch.cuda.amp.autocast():
-                        outputs = self.params.model(data)
-                        loss = torch.nn.MSELoss()(outputs, data)
-
-                    scaler.scale(loss).backward()
-                    scaler.step(optimizer)
-                    scaler.update()
+                        outputs = self.params.model(x_in)
+                        loss = weighted_loss(x_in, outputs, weight)
+                    loss.backward()
+                    optimizer.step()
                     epoch_loss += loss.item()
                     t.set_postfix(
-                        loss='{:.3f}'.format(epoch_loss / counter),
+                        loss='{:.8f}'.format(epoch_loss / counter),
                         epoch=epoch + 1
                     )
                     t.update()
@@ -53,11 +50,13 @@ class Trainer:
                 #errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
                 errors = torch.nn.functional.cosine_similarity(outputs, self.data, dim=1)
                 errors = errors.cpu().detach()
-                if len(reconstruction_errors)==0:
-                    reconstruction_errors =  errors
+                if len(reconstruction_errors) == 0:
+                    reconstruction_errors = errors
                 else:
                     reconstruction_errors = np.column_stack((reconstruction_errors, errors))
+
         return reconstruction_errors
+
 
 class TrainerAE(BaseTrainer):
     def __init__(self, params):
@@ -66,14 +65,14 @@ class TrainerAE(BaseTrainer):
         self.model = self.params.model
         super(TrainerAE, self).__init__(params)
 
-    def train_iter(self, X):
-        outputs = self.model(X)[1]
-
-        loss = ((X - outputs) ** 2).sum(axis=-1).mean()
+    def train_iter(self, x_in, weights):
+        x_out = self.model(x_in)[1]
+        loss = weighted_loss(x_in, x_out, weights)
         return loss
-    def score(self, sample):
-        _, X_prime = self.model(sample)
-        return ((sample - X_prime) ** 2).sum(axis=1)
+
+    def score(self, x_in):
+        _, x_out = self.model(x_in)
+        return ((x_in - x_out) ** 2).sum(axis=1)
 
 
 def add_noise(data, noise_factor=0.5):

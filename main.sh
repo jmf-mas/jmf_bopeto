@@ -2,17 +2,14 @@
 
 datasets=("ciciot" "credit" "ecg" "ids" "kdd" "kitsune")
 models=("ae" "alad" "dagmm" "dsebm" "svdd", "if", "lof", "ocsvm")
-datasets=("nsl")
-models=("ae")
 process_dataset_model() {
-    cleaning="cleaning.py"
-    detection="detection.py"
+    detection="ad.py"
     dataset_name="--dataset"
     model_name="--model"
     dataset="$1"
     model="$2"
     echo "Processing dataset: $dataset with model: $model"
-    python "$cleaning" "$dataset_name" "$dataset"
+    python "$detection" "$dataset_name" "$dataset"
     python "$detection" "$dataset_name" "$dataset" "$model_name" "$model"
     echo "Finished processing dataset: $dataset with model: $model"
 }

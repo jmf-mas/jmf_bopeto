@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-
+from copy import deepcopy
 from abc import ABC, abstractmethod
-from typing import Union
+import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from torch import optim
 from tqdm import trange
@@ -49,73 +49,89 @@ class BaseTrainer(ABC):
         pass
 
     def set_optimizer(self):
-        return optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.params.weight_decay)
+        return optim.Adam(self.params.model.parameters(), lr=self.lr, weight_decay=self.params.weight_decay)
 
     def train(self):
-        dataset = TabularDataset(self.params.data)
+        dataset = TabularDataset(self.params.data, self.params.weights)
         data_loader = DataLoader(dataset, batch_size=self.params.batch_size, shuffle=True, num_workers=self.params.num_workers)
-
         self.model.train()
-        for epoch in range(self.params.epochs):
-            epoch_loss = 0.0
-            counter = 1
+        a = []
+        break_outer = False
+        max_round = self.params.T
+        for i in range(max_round):
+            best_val_loss = np.Inf
+            current_patience = self.params.patience
+            for epoch in range(self.params.epochs):
+                epoch_loss = 0.0
+                counter = 1
 
-            with trange(len(data_loader)) as t:
-                for batch in data_loader:
-                    data = batch['data'].to(self.params.device)
-                    self.optimizer.zero_grad()
-                    loss = self.train_iter(data)
+                with trange(len(data_loader)) as t:
+                    for batch in data_loader:
+                        data = batch['data'].to(self.params.device)
+                        idx = batch['index']
+                        weight = batch['weight'].to(self.params.device)
+                        if self.params.mode == "iad" and i > 0:
+                            weight = weights[idx]
 
-                    # Backpropagation
-                    loss.backward()
-                    self.optimizer.step()
+                        self.optimizer.zero_grad()
+                        loss = self.train_iter(data, weight)
 
-                    epoch_loss += loss.item()
-                    t.set_postfix(
-                        loss='{:.3f}'.format(epoch_loss / counter),
-                        epoch=epoch + 1
-                    )
-                    t.update()
-                    counter += 1
+                        # Backpropagation
+                        loss.backward()
+                        self.optimizer.step()
+
+                        epoch_loss += loss.item()
+                        t.set_postfix(
+                            round='{:.2f} %'.format(100*(i + 1) / self.params.T),
+                            loss='{:.8f}'.format(epoch_loss / counter),
+                            epoch=epoch + 1
+                        )
+                        t.update()
+                        counter += 1
+
+                val_loss = self.validate(self.params.val)
+                if val_loss < best_val_loss - self.params.min_delta:
+                    best_val_loss = val_loss
+                    current_patience = self.params.patience
+                else:
+                    current_patience -= 1
+                    if current_patience == 0:
+                        print("early stopping.")
+                        break_outer = True
+                        break
+
+            if self.params.mode == "iad":
+                _, scores = self.test(self.params.data)
+                weights = get_weight(scores, self.params.device)
+                indices = sorted(range(len(scores)), key=lambda x: scores[x])
+                a.append([deepcopy(self.model), indices])
+            if break_outer:
+                max_round = i + 1
+                break
+
+        n = int(np.ceil(len(self.params.data)/2))
+        best_round = np.Inf
+        for i in range(1, max_round):
+            previous_indices = a[i-1][-1]
+            first_half_prev = previous_indices[:n]
+            second_half_prev = previous_indices[n:]
+            current_indices = a[i][-1]
+            first_half_current = current_indices[:n]
+            second_half_current = current_indices[n:]
+            change_count = len(set(first_half_prev) - set(first_half_current))
+            change_count += len(set(second_half_prev) - set(second_half_current))
+            if change_count < best_round:
+                self.model = deepcopy(a[i][0])
+                best_round = change_count
 
         self.after_training()
 
-    def eval(self, dataset: DataLoader):
-        self.model.eval()
-        with torch.no_grad():
-            loss = 0
-            for row in dataset:
-                data = row['data'].to(self.params.device)
-                loss += self.train_iter(data)
-        self.model.train()
-
-        return loss
-
-    def _eval(self, dataset: DataLoader):
-        self.model.eval()
-        y_true, scores = [], []
-        with torch.no_grad():
-            for row in dataset:
-                X = row['data'].to(self.params.device)
-                y = row['target'].to(self.params.device)
-                X = X.to(self.device).float()
-                score = self.score(X)
-                y_true.append(y.cpu().numpy())
-                scores.append(score.cpu().numpy())
-        self.model.train()
-
-        y_true, scores = np.concatenate(y_true, axis=0), np.concatenate(scores, axis=0)
-        # _estimate_threshold_metrics
-
-        accuracy, precision, recall, f_score, roc, avgpr = _estimate_threshold_metrics(scores, y_true,
-                                                                                       optimal=False)
-
-        return {k: round(v, 3) for k, v in
-                dict(accuracy=accuracy,
-                     precision=precision, recall=recall, f_score=f_score, avgpr=avgpr, proc1p=roc).items()}
+    def validate(self, data):
+        _, scores = self.test(data)
+        return np.mean(scores)
 
     def test(self, data):
-        test_set = TabularDataset(data)
+        test_set = TabularDataset(data, np.ones(data.shape[0]))
         test_loader = DataLoader(test_set, batch_size=self.params.batch_size, shuffle=True,
                                  num_workers=self.params.num_workers)
         self.model.eval()
@@ -131,21 +147,6 @@ class BaseTrainer(ABC):
 
         return np.array(y_true), np.array(scores)
 
-    def test_return_all(self, dataset: DataLoader) -> Union[np.array, np.array]:
-        self.model.eval()
-        y_true, scores, xs = [], [], []
-        with torch.no_grad():
-            for row in dataset:
-                X, y = row[0], row[1]
-                X = X.to(self.device).float()
-                score = self.score(X)
-                y_true.extend(y.cpu().tolist())
-                scores.extend(score.cpu().tolist())
-                xs.extend(X.cpu().tolist())
-        self.model.train()
-
-        return np.array(y_true), np.array(scores), np.array(xs)
-
     def get_params(self) -> dict:
         return {
             "learning_rate": self.lr,
@@ -157,21 +158,23 @@ class BaseTrainer(ABC):
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
 
+
 class TrainerBaseShallow(ABC):
     def __init__(self, params):
         self.params = params
         self.name = "shallow"
 
     def train(self):
-        self.params.model.clf.fit(self.params.data[:, :-1])
+        self.params.model.clf.fit(self.params.data[self.params.weights == 1, :-1])
 
     def score(self, sample):
         return self.params.model.clf.predict(sample)
 
-    def test(self, X):
-        score = self.score(X)
+    def test(self, sample):
+        score = self.score(sample)
         y_pred = np.where(score == 1, 0, score)
         return np.where(y_pred == -1, 1, y_pred)
+
     def get_params(self) -> dict:
         return {
             **self.model.get_params()
@@ -179,3 +182,23 @@ class TrainerBaseShallow(ABC):
 
     def predict(self, scores: np.array, thresh: float):
         return (scores >= thresh).astype(int)
+
+
+def weighted_loss(x_in, x_out, weights):
+    mse = nn.MSELoss(reduction='none')
+    loss = mse(x_in, x_out)
+    return torch.mean(loss * weights.unsqueeze(1))
+
+
+def get_weight(scores, device, tau=0.25):
+    s_min = np.min(scores)
+    s_max = np.max(scores)
+    s_med = np.median(scores)
+    alpha = 1/(min(s_med - s_min, s_max - s_med)*tau)
+    beta = s_med
+    exponent = alpha*(scores - beta)
+    exponent = np.clip(exponent, a_min=0, a_max=5)
+    weight = 1 / (1 + np.exp(exponent))
+    weight = np.clip(weight, a_min=0, a_max=1)
+    return torch.tensor(weight).to(device)
+

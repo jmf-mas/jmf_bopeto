@@ -4,9 +4,9 @@ This repository implements Bopeto method and collects different unsupervised mac
 For OoD detection we have used the following models. Our implementations of ALAD and DeepSVDD closely follows the original implementations already available on GitHub.
 - [x] [AE]()
 - [x] [ALAD]()
-- [x] [DSEBM]()
 - [x] [DAGMM]()
 - [x] [DeepSVDD]()
+- [x] [DSEBM]()
 - [x] [IsolationForest]()
 - [x] [LocalOutlierFactor]()
 - [x] [One-class SVM]()
@@ -38,11 +38,11 @@ Please note that datasets must be stored in `.npz`.
 ## Example
 Cleaning KDD dataset using Bopeto:
 ```
-$ python cleaning.py --dataset kdd 
+$ python ad.py --dataset kdd  --mode cleaning --num_contamination_subsets 3 
 ```
-Detecting OoD instances using a DAGMM on the KDD dataset:
+Detecting anomalous instances using SVDD on the KDD dataset:
 ```
-$ python detection.py --dataset kdd --model dagmm --epochs 10
+$ python ad.py --dataset kdd --model svdd --mode bopeto
 ```
 You can automate the whole process (data cleaning and OoD detection) using the following
 ```

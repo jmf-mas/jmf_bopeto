@@ -1,7 +1,6 @@
 import gzip
 import pickle
 from pathlib import Path
-
 import torch
 from abc import abstractmethod, ABC
 from torch import nn
@@ -14,13 +13,12 @@ class BaseAEModel(nn.Module):
         self.params = params
 
     def save(self):
-        parent_name = "checkpoints"
-        Path(parent_name).mkdir(parents=True, exist_ok=True)
-        with open(parent_name + "/" + self.params.model_name+ "_"+self.params.dataset_name + ".pickle", "wb") as fp:
+        Path(self.params.directory_model).mkdir(parents=True, exist_ok=True)
+        with open(self.params.directory_model+ self.params.model_name + "_"+self.params.dataset_name + ".pickle", "wb") as fp:
             pickle.dump(self.state_dict(), fp)
 
     def load(self):
-        with open("checkpoints/" + self.params.model_name+ "_"+self.params.dataset_name  + ".pickle", "rb") as fp:
+        with open(self.params.directory_model + self.params.model_name + "_"+self.params.dataset_name + ".pickle", "rb") as fp:
             self.load_state_dict(pickle.load(fp))
 
 
@@ -64,28 +62,26 @@ class BaseModel(nn.Module):
         torch.save(self.state_dict(), filename)
 
     def save(self):
-        parent_name = "checkpoints"
-        Path(parent_name).mkdir(parents=True, exist_ok=True)
-        with open(parent_name + "/" + self.params.model_name+ "_"+self.params.dataset_name + ".pickle", "wb") as fp:
+        Path(self.params.directory_model).mkdir(parents=True, exist_ok=True)
+        with open(self.params.directory_model + self.params.model_name + "_"+self.params.dataset_name + ".pickle", "wb") as fp:
             pickle.dump(self.state_dict(), fp)
 
     def load(self):
-        with open("checkpoints/" + self.params.model_name+ "_"+self.params.dataset_name  + ".pickle", "rb") as fp:
+        with open(self.params.directory_model+ self.params.model_name + "_"+self.params.dataset_name  + ".pickle", "rb") as fp:
             self.load_state_dict(pickle.load(fp))
 
     def load_from(self, file):
-        with open("checkpoints/" + file + ".pickle", "rb") as fp:
+        with open(self.params.directory_model + file + ".pickle", "rb") as fp:
             self.load_state_dict(pickle.load(fp))
-
 
 
 class BaseShallowModel(ABC):
 
     def __init__(self, params):
         self.params = params
-        self.resolve_params(params.dataset_name)
+        self.resolve_params()
 
-    def resolve_params(self, dataset_name: str):
+    def resolve_params(self):
         pass
 
     def reset(self):

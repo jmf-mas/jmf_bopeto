@@ -1,43 +1,86 @@
 import argparse
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from models.duad import DUAD
 from models.neutralad import NeuTraLAD
 from models.shallow import IF, LOF, OCSVM
 from trainer.duad import TrainerDUAD
 from trainer.neutralad import TrainerNeuTraLAD
+from selector import mode_cleaning, mode_b_iad
 from utils.params import Params
-from copy import deepcopy
+from trainer.ae import TrainerAE
 from trainer.base import TrainerBaseShallow
-from utils.utils import estimate_optimal_threshold, compute_metrics, compute_metrics_binary, resolve_model_trainer, \
-    get_contamination
+from trainer.dagmm import TrainerDAGMM
+from trainer.dsebm import TrainerDSEBM
+from trainer.alad import TrainerALAD
+from trainer.svdd import TrainerSVDD
+from models.svdd import DeepSVDD
+from models.alad import ALAD
+from models.dsebm import DSEBM
+from models.ae import AEDetecting, AECleaning
+from models.dagmm import DAGMM
 import logging
 
 np.random.seed(42)
 
-logging.basicConfig(filename='logs/contamination.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-outputs = "outputs/"
+directory_model = "b_checkpoints/"
+directory_data = "b_data/"
+directory_output = "b_outputs/"
+directory_log = "b_logs/"
+directory_detection = "b_detection/"
 
-model_trainer_map = {
-    "duad": (TrainerDUAD, DUAD),
-    "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
-    "ocsvm": (TrainerBaseShallow, OCSVM),
+
+Path(directory_model).mkdir(parents=True, exist_ok=True)
+Path(directory_data).mkdir(parents=True, exist_ok=True)
+Path(directory_output).mkdir(parents=True, exist_ok=True)
+Path(directory_log).mkdir(parents=True, exist_ok=True)
+Path(directory_detection).mkdir(parents=True, exist_ok=True)
+
+
+logging.basicConfig(filename=directory_log+'/robustness.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+model_bopeto_map = {
+    "alad": (TrainerALAD, ALAD),
+    "dagmm": (TrainerDAGMM, DAGMM),
+    "dsebm": (TrainerDSEBM, DSEBM),
     "if": (TrainerBaseShallow, IF),
     "lof": (TrainerBaseShallow, LOF),
+    "ae": (TrainerAE, AEDetecting),
+    "svdd": (TrainerSVDD, DeepSVDD),
+}
+
+model_iad_map = {
+    "ae": (TrainerAE, AEDetecting),
+    "svdd": (TrainerSVDD, DeepSVDD),
+}
+
+model_cleaning_map = {
+    "ae": (TrainerAE, AECleaning)
+}
+
+model_impact_map = {
+    "neutralad": (TrainerNeuTraLAD, NeuTraLAD),
+    "duad": (TrainerDUAD, DUAD),
+    "ocsvm": (TrainerBaseShallow, OCSVM),
+    "if": (TrainerBaseShallow, IF),
+    "lof": (TrainerBaseShallow, LOF)
 }
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="OoD detection",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="OoD detection", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--batch_size', nargs='?', const=1, type=int, default=64)
     parser.add_argument('-l', '--learning_rate', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-w', '--weight_decay', nargs='?', const=1, type=float, default=1e-3)
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
-    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=20)
+    parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=100)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
     parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
-    parser.add_argument('--model', type=str, default='AE', help='model name')
+    parser.add_argument('--model', type=str, default='svdd', help='model name')
+    parser.add_argument('--cleaning', type=str, default='hard', help='type of cleaning (hard or soft)')
+    parser.add_argument('--mode', type=str, default='bopeto', help='running modes: cleaning, bopeto or iad')
+    parser.add_argument('-c', '--num_contamination_subsets', nargs='?', const=1, type=int, default=10)
 
     #DaGMM
     parser.add_argument('--gmm_k', type=int, default=4)
@@ -47,7 +90,6 @@ if __name__ == "__main__":
     parser.add_argument('--sample_step', type=int, default=194)
     parser.add_argument('--model_save_step', type=int, default=194)
 
-    # Jeff
     parser.add_argument(
         '--n-runs',
         help='number of runs of the experiment',
@@ -71,7 +113,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--patience',
         type=float,
-        default=10,
+        default=5,
         help='Early stopping patience')
 
     parser.add_argument(
@@ -163,7 +205,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     configs = vars(args)
 
     gmm_k = configs['gmm_k']
@@ -184,69 +225,28 @@ if __name__ == "__main__":
     params.model_name = configs['model']
     params.early_stopping = configs['early_stopping']
     params.dataset_name = configs['dataset']
-    data = np.load("detection/"+params.dataset_name+".npz", allow_pickle=True)
-    keys = list(data.keys())
-    filter_keys = list(filter(lambda s: "contamination_" in s, data.keys()))
-    params.test = data[params.dataset_name + "_test"]
-    params.val = data[params.dataset_name + "_val"]
-    params.in_features = params.val.shape[1]-1
-    performances = pd.DataFrame([], columns=["dataset", "true_contamination", "contamination", "model", "accuracy", "precision", "recall", "f1"])
-    params.data = data[filter_keys[0]]
-    params.novelty = True
-    tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
-    mo = mo(params)
-    params.model = mo
-    tr = tr(params)
-    #filter_keys = ["nsl_train_contamination_0.31680212797399143"]
-    n_cases = len(filter_keys)
-    for i, key in enumerate(filter_keys):
-        contamination, model_name_ = get_contamination(key, params.model_name)
-        c_ = contamination
-        mis_contamination = list(np.linspace(0, 0.5, 5)) + [contamination]
-        mis_contamination.sort()
-        mis_contamination = np.unique(mis_contamination)
-        n_mis = len(mis_contamination)
+    params.cleaning = configs['cleaning']
+    params.mode = configs['mode']
+    params.num_contamination_subsets = configs['num_contamination_subsets']
+    params.directory_model = directory_model
+    params.directory_data = directory_data
+    params.directory_output = directory_output
+    params.directory_log = directory_log
+    params.directory_detection = directory_detection
 
-        for j, mis_cont in enumerate(mis_contamination):
-            # try:
-            print("{}/{}: training on {}".format(i * n_mis + j + 1, n_mis*n_cases, key))
-            model = deepcopy(mo)
-            model.params.true_contamination_rate = contamination
-            model.params.contamination_rate = mis_cont
-            model.params.data = data[key]
-            trainer = deepcopy(tr)
-            trainer.params.data = data[key]
-            trainer.params.model = model
-            trainer.params.true_contamination_rate = contamination
-            trainer.params.contamination_rate = mis_cont
-            trainer.params.weights = np.ones(trainer.params.data.shape[0])
-            trainer.train()
-            if trainer.name == "shallow":
-                X, y_test = params.test[:, :-1], params.test[:, -1]
-                y_pred = trainer.test(X)
-                metrics = compute_metrics_binary(y_pred, y_test, pos_label=1)
-            else:
-                y_val, score_val = trainer.test(params.val)
-                y_test, score_test = trainer.test(params.test)
-                threshold = estimate_optimal_threshold(score_val, y_val, pos_label=1, nq=100)
-                threshold = threshold["Thresh_star"]
-                metrics = compute_metrics(score_test, y_test, threshold, pos_label=1)
+    if params.mode == "bopeto":
+        params.model_trainer_map = model_bopeto_map
+    else:
+        params.model_trainer_map = model_iad_map
 
-            perf = [params.dataset_name, contamination, mis_cont, model_name_, metrics[0], metrics[1], metrics[2], metrics[3]]
-            performances.loc[len(performances)] = perf
-            print("performance on", key, "with reported contamination", mis_cont, metrics[:4])
-            # except RuntimeError as e:
-            #     logging.error(
-            #         "OoD detection on {} with {} and contamination rate {} wrongly reported as {}  unfinished caused by {} ...".format(params.dataset_name,
-            #                                                                                        params.model_name,
-            #                                                                                        contamination, mis_cont, e))
-            # except Exception as e:
-            #     logging.error(
-            #         "Error for OoD detection on {} with {} and contamination rate {} wrongly reported as {}: {} ...".format(
-            #             params.dataset_name,
-            #             params.model_name,
-            #             contamination, mis_cont, e))
-    performances.to_csv("outputs/mis_contamination_"+params.dataset_name+"_"+params.model_name+".csv", header=True, index=False)
+    if params.mode == "cleaning":
+        mode_cleaning(params)
+    else:
+        mode_b_iad(params)
+
+
+
+
 
 
 

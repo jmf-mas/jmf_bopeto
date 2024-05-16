@@ -10,6 +10,7 @@ class Params:
         self.weights = None
         self.cleaning = "hard"
         self.mode = "bopeto"
+        self.model_trainer_map = None
         self.T = 10
         self.num_contamination_subsets = 3
         self.patience = 10
@@ -68,6 +69,13 @@ class Params:
         # early stop
         self.patience = 5
         self.min_delta = 0.0
+
+        # folders
+        self.directory_model = "b_checkpoints/"
+        self.directory_data = "b_data/"
+        self.directory_output = "b_outputs/"
+        self.directory_log = "b_logs/"
+        self.directory_detection = "b_detection/"
 
     def set_model(self):
         self.id = self.dataset_name+"_"+"_ae_rate_"+str(self.rate)

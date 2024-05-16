@@ -20,8 +20,8 @@ class Trainer:
         self.params.model.to(self.params.device)
         self.data = self.data.to(self.params.device)
         reconstruction_errors = []
-
-        for epoch in range(self.params.epochs):
+        n_epochs = 10
+        for epoch in range(n_epochs):
             self.params.model.train()
             epoch_loss = 0.0
             counter = 1
@@ -50,12 +50,13 @@ class Trainer:
                 #errors = torch.nn.functional.mse_loss(outputs, self.data, reduction='none').mean(1)
                 errors = torch.nn.functional.cosine_similarity(outputs, self.data, dim=1)
                 errors = errors.cpu().detach()
-                if len(reconstruction_errors)==0:
-                    reconstruction_errors =  errors
+                if len(reconstruction_errors) == 0:
+                    reconstruction_errors = errors
                 else:
                     reconstruction_errors = np.column_stack((reconstruction_errors, errors))
 
         return reconstruction_errors
+
 
 class TrainerAE(BaseTrainer):
     def __init__(self, params):
@@ -68,6 +69,7 @@ class TrainerAE(BaseTrainer):
         x_out = self.model(x_in)[1]
         loss = weighted_loss(x_in, x_out, weights)
         return loss
+
     def score(self, x_in):
         _, x_out = self.model(x_in)
         return ((x_in - x_out) ** 2).sum(axis=1)

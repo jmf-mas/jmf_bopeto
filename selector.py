@@ -6,15 +6,15 @@ from trainer.split import Splitter
 from utils.utils import Utils, contamination, compute_metrics_binary, estimate_optimal_threshold, compute_metrics, \
     find_match, get_contamination, resolve_model_trainer
 import logging
-logging.basicConfig(filename='logs/cleaning.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-np.random.seed(42)
 
-outputs = "outputs/"
+np.random.seed(42)
 
 
 def mode_cleaning(params):
+    logging.basicConfig(filename=params.directory_log+'/cleaning.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     params.model_name = "AECleaning"
-    splitter = Splitter(params.dataset_name)
+    splitter = Splitter(params.dataset_name, params.directory_data)
+
     data = splitter.split()
     rates = np.linspace(0, 1, params.num_contamination_subsets)
     cleaning = []
@@ -39,9 +39,9 @@ def mode_cleaning(params):
             before = contamination(utils.params.data)
             cont = before[1]
             print("synthetic data generation ...")
-            N = len(utils.params.data)
-            M = int(np.ceil(0.1 * N))
-            utils.params.fragment = pd.DataFrame(utils.params.data).sample(M).values
+            n = len(utils.params.data)
+            m = int(np.ceil(0.1 * n))
+            utils.params.fragment = pd.DataFrame(utils.params.data).sample(m).values
             synthetic = utils.generate_synthetic_data()
             utils.params.update_data(synthetic)
             utils.params.weights = np.ones(utils.params.data.shape[0])
@@ -54,8 +54,8 @@ def mode_cleaning(params):
             utils.params.set_model()
             dynamics = utils.get_reconstruction_errors()
             utils.params.dynamics = np.column_stack((dynamics, y))
-            np.savetxt(outputs + utils.params.model.name + '.csv', utils.params.dynamics, delimiter=',')
-            dynamics = np.loadtxt(outputs + utils.params.model.name + '.csv', delimiter=',')
+            np.savetxt(params.directory_output + utils.params.model.name + '.csv', utils.params.dynamics, delimiter=',')
+            dynamics = np.loadtxt(params.directory_output + utils.params.model.name + '.csv', delimiter=',')
             utils.params.dynamics = dynamics
             b = BOPETO(utils.params)
             weights, indices = b.refine()
@@ -74,27 +74,30 @@ def mode_cleaning(params):
                     params.dataset_name, cont, e))
 
     db = pd.DataFrame(data=cleaning, columns=['n1', 'n2', 'r1', 'r2'])
-    db.to_csv(outputs + utils.params.dataset_name + ".csv", index=False)
-    np.savez("detection/" + utils.params.dataset_name + ".npz", **data)
+    db.to_csv(params.directory_output + utils.params.dataset_name + ".csv", index=False)
+    np.savez(params.directory_detection + utils.params.dataset_name + ".npz", **data)
 
 
-def mode_bopeto_iad(params, model_trainer_map):
-    data = np.load("detection/" + params.dataset_name + ".npz", allow_pickle=True)
+def mode_b_iad(params):
+    logging.basicConfig(filename=params.directory_log+'/bopeto.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    data = np.load(params.directory_detection + params.dataset_name + ".npz", allow_pickle=True)
     keys = list(data.keys())
     filter_keys = list(filter(lambda s: "train_" in s, keys))
     params.test = data[params.dataset_name + "_test"]
     params.val = data[params.dataset_name + "_val"]
     params.in_features = params.val.shape[1] - 1
-    performances = pd.DataFrame([],
-                                columns=["dataset", "contamination", "model", "accuracy", "precision", "recall", "f1"])
+    performances = pd.DataFrame([], columns=["dataset", "contamination", "model", "accuracy", "precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
 
-    tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
+    tr, mo = resolve_model_trainer(params.model_trainer_map, params.model_name)
     mo = mo(params)
     params.model = mo
     tr = tr(params)
+    if params.mode != "iad":
+        params.T = 1
     n_cases = len(filter_keys)
-    print("running mode: {}".format(params.mode))
+
+    print("running mode: {} and cleaning mode {}".format(params.mode, params.cleaning))
     for i, key in enumerate(filter_keys):
         try:
             print("{}/{}: training on {}".format(i + 1, n_cases, key))
@@ -147,5 +150,17 @@ def mode_bopeto_iad(params, model_trainer_map):
                     params.dataset_name,
                     params.model_name,
                     contamination, e))
-    perf_path = "outputs/performances_" + params.mode + "_" + params.dataset_name + "_" + params.model_name + ".csv"
+    perf_path = params.directory_output + "/performances_" + params.cleaning + "_" + params.mode + "_" + params.dataset_name + "_" + params.model_name + ".csv"
     performances.to_csv(perf_path, header=True, index=False)
+
+
+
+
+
+
+
+
+
+
+
+

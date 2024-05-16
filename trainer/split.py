@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 
-folder = "data/"
 
 class Splitter:
-    def __init__(self, name):
+    def __init__(self, name, path):
         self.name = name
+        self.path = path
 
     def split(self):
-        path = folder + self.name +".npz"
+        path = self.path + self.name +".npz"
         return data_split(path)
 
 def create_lists(indices, n_train, n_val):

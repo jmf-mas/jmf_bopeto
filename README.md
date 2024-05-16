@@ -30,7 +30,7 @@ Replace `[ENV_NAME]` with the name of your environment.
 
 Our model contains the following parameters:
 - `--batch_size`: size of a training batch (default=64)
-- `--dataset`: name of the selected dataset. Choices are `ciciot`, `credit`, `ecg`, `ids`, `kdd`, `kitsune` (default=kdd). Please note that datasets must be stored in `.npz`. Dataset has no header and its last column is binary target (0 for inliers and 1 for outliers). Datasets should be stored in a folder named `b_data` under the code root folder.
+- `--dataset`: name of the selected dataset. Choices are `ciciot`, `credit`, `ecg`, `ids`, `kdd`, `kitsune` (default=kdd). Please note that datasets must be stored in `.npz` with one key as your dataset name. Dataset has no header and its last column is binary target (0 for inliers and 1 for outliers). Datasets should be stored in a folder named `b_data` under the code root folder.
 - `--epochs`: number of training epochs (default=100)
 - `--learning_rate`: learning rate (default=0.001)
 - `--weight_decay`: weight decay (default=0.001)
@@ -56,4 +56,3 @@ $ chmod +x ad.sh
 $ ./ad.sh
 ```
 -->
-Make sure that your dataset is saved with a correct name as a .npz file with one key as your dataset name

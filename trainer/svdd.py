@@ -4,6 +4,7 @@ from trainer.base import BaseTrainer
 
 
 class TrainerSVDD(BaseTrainer):
+    # code source: https://github.com/lukasruff/Deep-SVDD
 
     def __init__(self, params):
         self.params = params

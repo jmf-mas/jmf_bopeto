@@ -20,6 +20,7 @@ def weights_init_xavier(m):
         m.bias.data.zero_()
 
 class ALAD(BaseModel):
+    # code source : https://github.com/houssamzenati/Adversarially-Learned-Anomaly-Detection
     def __init__(self, params):
         self.G = None
         self.E = None

@@ -296,7 +296,7 @@ if __name__ == "__main__":
         #             params.dataset_name,
         #             params.model_name,
         #             contamination, e))
-    perf_path = "outputs/performances__"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
+    perf_path = "outputs/performances_soft"+params.mode+"_"+params.dataset_name+"_"+params.model_name+".csv"
     performances.to_csv(perf_path, header=True, index=False)
 
 

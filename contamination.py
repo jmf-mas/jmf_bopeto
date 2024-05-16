@@ -190,7 +190,7 @@ if __name__ == "__main__":
     params.test = data[params.dataset_name + "_test"]
     params.val = data[params.dataset_name + "_val"]
     params.in_features = params.val.shape[1]-1
-    performances = pd.DataFrame([], columns=["dataset", "true_contamination", "contamination", "model", "accuracy","precision", "recall", "f1"])
+    performances = pd.DataFrame([], columns=["dataset", "true_contamination", "contamination", "model", "accuracy", "precision", "recall", "f1"])
     params.data = data[filter_keys[0]]
     params.novelty = True
     tr, mo = resolve_model_trainer(model_trainer_map, params.model_name)
@@ -201,10 +201,12 @@ if __name__ == "__main__":
     n_cases = len(filter_keys)
     for i, key in enumerate(filter_keys):
         contamination, model_name_ = get_contamination(key, params.model_name)
-        c_ = contamination + 0.01
-        mis_contamination = [c_/4, c_/2, contamination, 5*c_/4, 3*c_/2]
+        c_ = contamination
+        mis_contamination = list(np.linspace(0, 0.5, 5)) + [contamination]
+        mis_contamination.sort()
         mis_contamination = np.unique(mis_contamination)
         n_mis = len(mis_contamination)
+
         for j, mis_cont in enumerate(mis_contamination):
             # try:
             print("{}/{}: training on {}".format(i * n_mis + j + 1, n_mis*n_cases, key))

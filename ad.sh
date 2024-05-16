@@ -8,13 +8,13 @@ process_dataset_model() {
     model_name="--model"
     dataset="$1"
     model="$2"
-    echo "Processing dataset: $dataset with model: $model"
+    echo "processing dataset: $dataset with model: $model"
     python "$detection" "$dataset_name" "$dataset"
     python "$detection" "$dataset_name" "$dataset" "$model_name" "$model"
-    echo "Finished processing dataset: $dataset with model: $model"
+    echo "finished processing dataset: $dataset with model: $model"
 }
 
 export -f process_dataset_model
 
 parallel -j "$(nproc)" process_dataset_model ::: "${datasets[@]}" ::: "${models[@]}"
-echo "Cleaning and OoD detection processed successfully"
+echo "cleaning and anomaly detection processed successfully"

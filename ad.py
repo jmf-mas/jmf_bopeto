@@ -1,6 +1,5 @@
 import argparse
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from models.duad import DUAD
 from models.neutralad import NeuTraLAD
@@ -76,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--alpha', nargs='?', const=1, type=float, default=0.3)
     parser.add_argument('-e', '--epochs', nargs='?', const=1, type=int, default=100)
     parser.add_argument('-n', '--num_workers', nargs='?', const=1, type=int, default=4)
-    parser.add_argument('--dataset', type=str, default='nsl', help='data set name')
+    parser.add_argument('--dataset', type=str, default='kdd', help='data set name')
     parser.add_argument('--model', type=str, default='svdd', help='model name')
     parser.add_argument('--cleaning', type=str, default='hard', help='type of cleaning (hard or soft)')
     parser.add_argument('--mode', type=str, default='bopeto', help='running modes: cleaning, bopeto or iad')

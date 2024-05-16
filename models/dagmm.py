@@ -8,7 +8,7 @@ from .gmm import GMM
 
 
 class DAGMM(BaseModel):
-
+    # code source: https://github.com/intrudetection/robevalanodetect
     def __init__(self, params):
         self.params = params
         self.lambda_1 = params.lambda_1

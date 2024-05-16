@@ -5,6 +5,7 @@ from .base import BaseModel
 
 
 class DSEBM(BaseModel):
+    # code source: https://github.com/intrudetection/robevalanodetect
     def __init__(self, params):
         self.params = params
         super(DSEBM, self).__init__(params)

@@ -21,7 +21,6 @@ class BOPETO:
         anomaly_scores = detector.decision_function(values)
         ood = anomaly_scores[y_pred == -1]
         in_ = anomaly_scores[y_pred == 1]
-        threshold = (np.max(ood) + np.min(in_)) / 2
         threshold = np.percentile(ood, np.random.randint(60, 70, 1)[0])
         y_pred = anomaly_scores >= threshold
         indices = list(db[(y_pred == 1) & (db["class"] != "synthetic")].index)

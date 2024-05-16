@@ -44,7 +44,7 @@ Detecting anomalous instances using SVDD on the KDD dataset:
 ```
 $ python ad.py --dataset kdd --model svdd --mode bopeto
 ```
-You can automate the whole process (data cleaning and OoD detection) using the following
+You can automate the whole process (data cleaning and anomaly detection) using the following
 ```
 $ chmod +x ad.sh
 $ ./ad.sh

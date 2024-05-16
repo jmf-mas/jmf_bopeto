@@ -28,11 +28,10 @@ $ pip install -r requirements.txt
 ```
 Replace `[ENV_NAME]` with the name of your environment.
 
-
 Our model contains the following parameters:
 - `--batch-size`: size of a training batch (**required**)
 - `--dataset`: name of the selected dataset. Choices are `ciciot`, `credit`, `ecg`, `ids`, `kdd`, `kitsune` (**required**).
-- `-epochs`: number of training epochs (default=20)
+- `-epochs`: number of training epochs (default=100)
 Please note that datasets must be stored in `.npz`. 
 
 ## Example

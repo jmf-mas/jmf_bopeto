@@ -46,7 +46,7 @@ $ python ad.py --dataset kdd --model svdd --mode bopeto
 ```
 You can automate the whole process (data cleaning and OoD detection) using the following
 ```
-$ chmod +x main.sh
-$ ./main.sh
+$ chmod +x ad.sh
+$ ./ad.sh
 ```
 Make sure that your dataset is saved with a correct name as a .npz file with one key as your dataset name

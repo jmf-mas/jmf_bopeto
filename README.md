@@ -1,5 +1,5 @@
 # Bopeto: Data cleaning for unsupervised anomaly detection
-This repository implements Bopeto method and collects different unsupervised machine learning algorithms for anomaly detection.
+This repository implements Bopeto method and collects different unsupervised deep learning algorithms for anomaly detection.
 ## Implemented models
 For unsupervised anomaly detection we have used the following models. The original implementations already available on GitHub.
 - [x] [AE](https://github.com/intrudetection/robevalanodetect)
